@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3>GPA Tích Lũy</h3>
+                <h1 class="display-4 fw-bold">{{ gpa }}</h1>
+                <p>/ 4.0</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header">Bảng điểm chi tiết</div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Môn học</th>
+                    <th>Tín chỉ</th>
+                    <th>CC</th>
+                    <th>GK</th>
+                    <th>CK</th>
+                    <th>Tổng (10)</th>
+                    <th>Tổng (4)</th>
+                    <th>Điểm chữ</th>
+                    <th>Kết quả</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for enroll in enrollments %}
+                <tr>
+                    <td>{{ enroll.class_info.subject.name }}</td>
+                    <td>{{ enroll.class_info.subject.credits }}</td>
+                    <td>{{ enroll.attendance_score }}</td>
+                    <td>{{ enroll.midterm_score or '' }}</td>
+                    <td>{{ enroll.final_score or '' }}</td>
+                    <td class="fw-bold">{{ enroll.total_10 or '' }}</td>
+                    <td class="fw-bold text-primary">{{ enroll.total_4 or '' }}</td>
+                    <td>{{ enroll.letter_grade or '' }}</td>
+                    <td>
+                        {% if enroll.total_4 is not none %}
+                            {% if enroll.is_passed %}
+                                <span class="badge bg-success">Đạt</span>
+                            {% else %}
+                                <span class="badge bg-danger">Học lại</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-secondary">Chưa có điểm</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

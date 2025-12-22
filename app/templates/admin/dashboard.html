@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-primary fw-bold mb-0">Quản trị Hệ thống</h2>
+            <p class="text-muted">Tổng quan số liệu và truy cập nhanh</p>
+        </div>
+        <div class="date-display text-muted">
+            <i class="far fa-calendar-alt"></i> Hôm nay: <span id="currentDate" class="fw-bold"></span>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-4 border-primary h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-muted small fw-bold">Sinh viên</h6>
+                            <h2 class="text-primary fw-bold mb-0">{{ stats.total_students }}</h2>
+                        </div>
+                        <div class="icon-shape bg-primary bg-opacity-10 text-primary rounded-circle p-3">
+                            <i class="fas fa-user-graduate fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-0 py-2">
+                    <a href="{{ url_for('admin.manage_students') }}"
+                       class="text-primary text-decoration-none small fw-bold">
+                        Quản lý chi tiết <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-4 border-success h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-muted small fw-bold">Giảng viên</h6>
+                            <h2 class="text-success fw-bold mb-0">{{ stats.total_teachers }}</h2>
+                        </div>
+                        <div class="icon-shape bg-success bg-opacity-10 text-success rounded-circle p-3">
+                            <i class="fas fa-chalkboard-teacher fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-0 py-2">
+                    <a href="{{ url_for('admin.manage_teachers') }}"
+                       class="text-success text-decoration-none small fw-bold">
+                        Xem danh sách <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-4 border-warning h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-muted small fw-bold">Môn học</h6>
+                            <h2 class="text-warning fw-bold mb-0">{{ stats.total_subjects }}</h2>
+                        </div>
+                        <div class="icon-shape bg-warning bg-opacity-10 text-warning rounded-circle p-3">
+                            <i class="fas fa-book fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-0 py-2">
+                    <a href="{{ url_for('admin.manage_subjects') }}"
+                       class="text-warning text-decoration-none small fw-bold">
+                        Quản lý học phần <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-start border-4 border-danger h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-muted small fw-bold">Lớp đang mở</h6>
+                            <h2 class="text-danger fw-bold mb-0">{{ stats.active_classes }}</h2>
+                        </div>
+                        <div class="icon-shape bg-danger bg-opacity-10 text-danger rounded-circle p-3">
+                            <i class="fas fa-layer-group fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-0 py-2">
+                    <a href="{{ url_for('admin.manage_classes') }}"
+                       class="text-danger text-decoration-none small fw-bold">
+                        Xếp lịch học <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h5 class="mb-3 text-secondary"><i class="fas fa-rocket"></i> Chức năng thường dùng</h5>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <a href="{{ url_for('admin.manage_semesters') }}"
+               class="card p-3 text-decoration-none text-dark shadow-sm hover-card">
+                <div class="d-flex align-items-center">
+                    <div class="bg-info text-white rounded p-3 me-3">
+                        <i class="fas fa-calendar-alt fa-lg"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-1">Quản lý Học kỳ</h6>
+                        <small class="text-muted">Mở/Đóng học kỳ, set Active</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card p-3 text-secondary bg-light shadow-sm">
+                <div class="d-flex align-items-center">
+                    <div class="bg-secondary text-white rounded p-3 me-3">
+                        <i class="fas fa-users-cog fa-lg"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-1">Tổng User hệ thống</h6>
+                        <small class="text-muted">{{ stats.total_users }} tài khoản đang hoạt động</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Script nhỏ để hiển thị ngày hiện tại
+    const dateElement = document.getElementById('currentDate');
+    const options = {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'};
+    dateElement.textContent = new Date().toLocaleDateString('vi-VN', options);
+</script>
+
+<style>
+    /* Hiệu ứng hover nhẹ cho các card */
+    .hover-card:hover {
+        transform: translateY(-5px);
+        transition: transform 0.3s ease;
+        border-color: #0dcaf0; /* Màu info */
+    }
+</style>
+{% endblock %}

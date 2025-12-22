@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Lịch Giảng Dạy Tuần Này</h2>
+
+<div class="table-responsive">
+    <table class="table table-bordered text-center align-middle">
+        <thead class="table-primary">
+            <tr>
+                <th style="width: 10%">Tiết / Thứ</th>
+                <th style="width: 12%">Thứ 2</th>
+                <th style="width: 12%">Thứ 3</th>
+                <th style="width: 12%">Thứ 4</th>
+                <th style="width: 12%">Thứ 5</th>
+                <th style="width: 12%">Thứ 6</th>
+                <th style="width: 12%">Thứ 7</th>
+                <th style="width: 12%">Chủ Nhật</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lesson in range(1, 11) %}
+            <tr>
+                <th class="table-secondary">Tiết {{ lesson }}</th>
+                
+                {% for day in range(2, 9) %}
+                    {% set ns = namespace(found=false, info='') %}
+                    
+                    {# Duyệt qua tất cả các lớp GV dạy #}
+                    {% for cls in my_classes %}
+                        {% for sch in cls.schedules %}
+                            {% if sch.day_of_week == day and lesson >= sch.start_lesson and lesson <= sch.end_lesson %}
+                                {% set ns.found = true %}
+                                {% set ns.info = cls.name + '<br>(' + sch.room + ')' %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+
+                    <td class="{% if ns.found %}bg-warning text-dark{% endif %}">
+                        {% if ns.found %}
+                            <small class="fw-bold">{{ ns.info|safe }}</small>
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VKU Grade System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            overflow-x: hidden;
+        }
+
+        /* Cấu hình Sidebar cố định bên trái */
+        .sidebar {
+            min-width: 260px;
+            max-width: 260px;
+            min-height: 100vh;
+            background-color: #212529; /* Màu tối */
+            color: #fff;
+        }
+
+        .sidebar .nav-link {
+            color: #adb5bd;
+            padding: 12px 20px;
+            font-size: 1rem;
+        }
+
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: #fff;
+            background-color: #0d6efd; /* Màu xanh active */
+            border-radius: 5px;
+        }
+
+        .sidebar .nav-link i {
+            width: 25px;
+            text-align: center;
+            margin-right: 10px;
+        }
+
+        /* Cấu hình vùng Nội dung chính bên phải */
+        .main-content {
+            flex-grow: 1; /* Quan trọng: Để nó chiếm hết phần còn lại */
+            width: 100%; /* Đảm bảo nó không bị co lại */
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="d-flex">
+    <div class="sidebar d-flex flex-column flex-shrink-0 p-3">
+        <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
+            <i class="fas fa-university fa-2x me-2"></i>
+            <span class="fs-4 fw-bold">VKU ADMIN</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            {% if current_user.is_authenticated %}
+
+            {# --- MENU ADMIN --- #}
+            {% if current_user.role == 'admin' %}
+            <li class="nav-item">
+                <a href="{{ url_for('admin.dashboard') }}"
+                   class="nav-link {% if 'dashboard' in request.path %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt"></i> Tổng quan
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('admin.manage_semesters') }}"
+                   class="nav-link {% if 'semesters' in request.path %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> Học kỳ
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('admin.manage_subjects') }}"
+                   class="nav-link {% if 'subjects' in request.path %}active{% endif %}">
+                    <i class="fas fa-book"></i> Môn học
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('admin.manage_teachers') }}"
+                   class="nav-link {% if 'teachers' in request.path %}active{% endif %}">
+                    <i class="fas fa-chalkboard-teacher"></i> Giảng viên
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('admin.manage_students') }}"
+                   class="nav-link {% if 'students' in request.path %}active{% endif %}">
+                    <i class="fas fa-user-graduate"></i> Sinh viên
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('admin.manage_classes') }}"
+                   class="nav-link {% if 'classes' in request.path %}active{% endif %}">
+                    <i class="fas fa-layer-group"></i> Lớp học phần
+                </a>
+            </li>
+
+            {# --- MENU TEACHER --- #}
+            {% elif current_user.role == 'teacher' %}
+            <li>
+                <a href="{{ url_for('teacher.dashboard') }}" class="nav-link text-white active">
+                    <i class="fas fa-chalkboard"></i> Lớp giảng dạy
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('teacher.schedule') }}" class="nav-link text-white">
+                    <i class="fas fa-calendar-day"></i> Lịch dạy
+                </a>
+            </li>
+
+            {# --- MENU STUDENT --- #}
+            {% elif current_user.role == 'student' %}
+            <li>
+                <a href="{{ url_for('student.dashboard') }}" class="nav-link text-white active">
+                    <i class="fas fa-home"></i> Trang chủ
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('student.registration') }}" class="nav-link text-white">
+                    <i class="fas fa-plus-circle"></i> Đăng ký tín chỉ
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('student.schedule') }}" class="nav-link text-white">
+                    <i class="fas fa-calendar-alt"></i> Thời khóa biểu
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('student.view_grades') }}" class="nav-link text-white">
+                    <i class="fas fa-graduation-cap"></i> Xem điểm
+                </a>
+            </li>
+            {% endif %}
+
+            {% endif %}
+        </ul>
+
+        <hr>
+
+        {% if current_user.is_authenticated %}
+        <div class="dropdown">
+            <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle"
+               id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
+                <div class="bg-primary rounded-circle d-flex justify-content-center align-items-center me-2"
+                     style="width: 32px; height: 32px;">
+                    <i class="fas fa-user"></i>
+                </div>
+                <strong>{{ current_user.full_name }}</strong>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
+                <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}">Đổi mật khẩu</a></li>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Đăng xuất</a></li>
+            </ul>
+        </div>
+        {% else %}
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary w-100">Đăng nhập</a>
+        {% endif %}
+    </div>
+
+    <div class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

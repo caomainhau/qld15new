@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-warning text-dark">
+                <strong>Thêm Lịch Học: {{ current_class.name }}</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="add_schedule" value="1">
+                    <div class="mb-3">
+                        <label>Thứ</label>
+                        <select name="day_of_week" class="form-select">
+                            <option value="2">Thứ 2</option>
+                            <option value="3">Thứ 3</option>
+                            <option value="4">Thứ 4</option>
+                            <option value="5">Thứ 5</option>
+                            <option value="6">Thứ 6</option>
+                            <option value="7">Thứ 7</option>
+                            <option value="8">Chủ nhật</option>
+                        </select>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label>Tiết BĐ</label>
+                            <input type="number" name="start_lesson" class="form-control" min="1" max="10" required>
+                        </div>
+                        <div class="col">
+                            <label>Tiết KT</label>
+                            <input type="number" name="end_lesson" class="form-control" min="1" max="10" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label>Phòng học</label>
+                        <input type="text" name="room" class="form-control" placeholder="Khu V - P201" required>
+                    </div>
+                    <button type="submit" class="btn btn-warning w-100">Thêm vào Thời khóa biểu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header">Thời khóa biểu hiện tại của lớp</div>
+            <div class="card-body">
+                <table class="table table-bordered text-center">
+                    <thead>
+                        <tr>
+                            <th>Thứ</th>
+                            <th>Tiết</th>
+                            <th>Phòng</th>
+                            <th>Xóa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if current_class.schedules %}
+                            {% for sch in current_class.schedules %}
+                            <tr>
+                                <td>
+                                    {% if sch.day_of_week == 8 %}CN{% else %}Thứ {{ sch.day_of_week }}{% endif %}
+                                </td>
+                                <td>{{ sch.start_lesson }} - {{ sch.end_lesson }}</td>
+                                <td><span class="badge bg-info text-dark">{{ sch.room }}</span></td>
+                                <td>
+                                    <form method="POST" style="display:inline;">
+                                        <input type="hidden" name="delete_schedule" value="1">
+                                        <input type="hidden" name="schedule_id" value="{{ sch.id }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">X</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="4" class="text-muted">Chưa có lịch học nào.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

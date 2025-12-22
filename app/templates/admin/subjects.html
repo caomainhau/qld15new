@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">Thêm Học phần</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label>Mã Học phần</label>
+                        <input type="text" name="code" class="form-control" placeholder="VD: 20GIT101" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Tên Học phần</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Số tín chỉ</label>
+                        <input type="number" name="credits" class="form-control" min="1" max="10" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Lưu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr><th>Mã HP</th><th>Tên HP</th><th>Tín chỉ</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for sub in subjects %}
+                        <tr>
+                            <td>{{ sub.code }}</td>
+                            <td>{{ sub.name }}</td>
+                            <td>{{ sub.credits }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

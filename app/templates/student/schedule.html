@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Thời khóa biểu cá nhân</h2>
+
+<div class="table-responsive">
+    <table class="table table-bordered text-center align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th style="width: 10%">Tiết / Thứ</th>
+                <th style="width: 12%">Thứ 2</th>
+                <th style="width: 12%">Thứ 3</th>
+                <th style="width: 12%">Thứ 4</th>
+                <th style="width: 12%">Thứ 5</th>
+                <th style="width: 12%">Thứ 6</th>
+                <th style="width: 12%">Thứ 7</th>
+                <th style="width: 12%">Chủ Nhật</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lesson in range(1, 11) %}
+            <tr>
+                <th class="table-secondary">Tiết {{ lesson }}</th>
+                
+                {# Vòng lặp các ngày trong tuần (2 -> 8) #}
+                {% for day in range(2, 9) %}
+                    {% set ns = namespace(found=false, info='') %}
+                    
+                    {# Kiểm tra xem tiết này, ngày này có môn nào không #}
+                    {% for enroll in enrollments %}
+                        {% for sch in enroll.class_info.schedules %}
+                            {% if sch.day_of_week == day and lesson >= sch.start_lesson and lesson <= sch.end_lesson %}
+                                {% set ns.found = true %}
+                                {% set ns.info = enroll.class_info.name + '<br>(' + sch.room + ')' %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+
+                    <td class="{% if ns.found %}bg-info text-white{% endif %}">
+                        {% if ns.found %}
+                            <small>{{ ns.info|safe }}</small>
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

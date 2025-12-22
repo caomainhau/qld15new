@@ -1,0 +1,179 @@
+-- Cấu hình charset để hiển thị tiếng Việt không bị lỗi
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- ----------------------------
+-- 1. Tạo Database (Nếu chưa có)
+-- ----------------------------
+CREATE DATABASE IF NOT EXISTS `vku_grade_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `vku_grade_db`;
+
+-- ----------------------------
+-- 2. Bảng USERS
+-- ----------------------------
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `email` varchar(150) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `full_name` varchar(150) NOT NULL,
+  `role` enum('admin','teacher','student') NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dữ liệu mẫu Users (Pass mặc định là 123456 cho tất cả)
+-- Hash này tương ứng với '123456' theo chuẩn werkzeug
+INSERT INTO `users` VALUES (1, 'admin@vku.udn.vn', 'scrypt:32768:8:1$Wd2t0y5l2j4k8p9q$abc123hashplaceholder', 'System Administrator', 'admin', NOW());
+INSERT INTO `users` VALUES (2, 'gv01@vku.udn.vn', 'scrypt:32768:8:1$Wd2t0y5l2j4k8p9q$abc123hashplaceholder', 'Nguyễn Văn Giảng (GV)', 'teacher', NOW());
+INSERT INTO `users` VALUES (3, 'gv02@vku.udn.vn', 'scrypt:32768:8:1$Wd2t0y5l2j4k8p9q$abc123hashplaceholder', 'Trần Thị Lý (GV)', 'teacher', NOW());
+INSERT INTO `users` VALUES (4, 'sv01@vku.udn.vn', 'scrypt:32768:8:1$Wd2t0y5l2j4k8p9q$abc123hashplaceholder', 'Lê Văn Trò (SV)', 'student', NOW());
+INSERT INTO `users` VALUES (5, 'sv02@vku.udn.vn', 'scrypt:32768:8:1$Wd2t0y5l2j4k8p9q$abc123hashplaceholder', 'Phạm Thị Mơ (SV)', 'student', NOW());
+
+-- ----------------------------
+-- 3. Bảng SEMESTERS (Học kỳ)
+-- ----------------------------
+DROP TABLE IF EXISTS `semesters`;
+CREATE TABLE `semesters` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `is_active` tinyint(1) DEFAULT '1',
+  `registration_open` tinyint(1) DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `semesters` VALUES (1, 'Học kỳ 1 (2023-2024)', '2023-08-15', '2023-12-31', 0, 0);
+INSERT INTO `semesters` VALUES (2, 'Học kỳ 2 (2023-2024)', '2024-01-15', '2024-06-30', 1, 1);
+
+-- ----------------------------
+-- 4. Bảng TEACHERS (Hồ sơ giảng viên)
+-- ----------------------------
+DROP TABLE IF EXISTS `teachers`;
+CREATE TABLE `teachers` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `teacher_code` varchar(20) NOT NULL,
+  `department` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_id` (`user_id`),
+  UNIQUE KEY `teacher_code` (`teacher_code`),
+  CONSTRAINT `fk_teacher_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `teachers` VALUES (1, 2, 'GV001', 'Khoa Khoa học máy tính');
+INSERT INTO `teachers` VALUES (2, 3, 'GV002', 'Khoa Kinh tế số');
+
+-- ----------------------------
+-- 5. Bảng STUDENTS (Hồ sơ sinh viên)
+-- ----------------------------
+DROP TABLE IF EXISTS `students`;
+CREATE TABLE `students` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `student_code` varchar(20) NOT NULL,
+  `class_name` varchar(50) DEFAULT NULL,
+  `major` varchar(100) DEFAULT NULL,
+  `cohort` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_id` (`user_id`),
+  UNIQUE KEY `student_code` (`student_code`),
+  CONSTRAINT `fk_student_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `students` VALUES (1, 4, '20GIT001', '20GIT', 'CNTT - Kỹ sư phần mềm', 'K20');
+INSERT INTO `students` VALUES (2, 5, '21GIT002', '21GIT', 'CNTT - Trí tuệ nhân tạo', 'K21');
+
+-- ----------------------------
+-- 6. Bảng SUBJECTS (Học phần)
+-- ----------------------------
+DROP TABLE IF EXISTS `subjects`;
+CREATE TABLE `subjects` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `code` varchar(20) NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `credits` int NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `subjects` VALUES (1, 'CS101', 'Lập trình Python cơ bản', 3);
+INSERT INTO `subjects` VALUES (2, 'WEB202', 'Phát triển ứng dụng Web', 4);
+INSERT INTO `subjects` VALUES (3, 'MATH001', 'Toán rời rạc', 3);
+
+-- ----------------------------
+-- 7. Bảng CLASSES (Lớp học phần)
+-- ----------------------------
+DROP TABLE IF EXISTS `classes`;
+CREATE TABLE `classes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `subject_id` int NOT NULL,
+  `semester_id` int NOT NULL,
+  `teacher_id` int NOT NULL,
+  `max_students` int DEFAULT '60',
+  `is_locked` tinyint(1) DEFAULT '0',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_class_semester` FOREIGN KEY (`semester_id`) REFERENCES `semesters` (`id`),
+  CONSTRAINT `fk_class_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`),
+  CONSTRAINT `fk_class_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `teachers` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Lớp Python (GV1), Lớp Web (GV1), Lớp Toán (GV2)
+INSERT INTO `classes` VALUES (1, 'Nhóm 1 - Python K20', 1, 2, 1, 60, 0);
+INSERT INTO `classes` VALUES (2, 'Nhóm 1 - Web Development', 2, 2, 1, 40, 0);
+INSERT INTO `classes` VALUES (3, 'Nhóm 2 - Toán rời rạc', 3, 2, 2, 50, 0);
+
+-- ----------------------------
+-- 8. Bảng SCHEDULES (Thời khóa biểu)
+-- ----------------------------
+DROP TABLE IF EXISTS `schedules`;
+CREATE TABLE `schedules` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `class_id` int NOT NULL,
+  `day_of_week` int NOT NULL,
+  `start_lesson` int NOT NULL,
+  `end_lesson` int NOT NULL,
+  `room` varchar(50) NOT NULL,
+  `is_canceled` tinyint(1) DEFAULT '0',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_schedule_class` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Python: Thứ 2, Tiết 1-3, Phòng V.201
+INSERT INTO `schedules` VALUES (1, 1, 2, 1, 3, 'V.201', 0);
+-- Web: Thứ 4, Tiết 7-9, Phòng V.305
+INSERT INTO `schedules` VALUES (2, 2, 4, 7, 9, 'V.305', 0);
+-- Toán: Thứ 6, Tiết 1-3, Phòng K.101
+INSERT INTO `schedules` VALUES (3, 3, 6, 1, 3, 'K.101', 0);
+
+-- ----------------------------
+-- 9. Bảng ENROLLMENTS (Điểm & Đăng ký)
+-- ----------------------------
+DROP TABLE IF EXISTS `enrollments`;
+CREATE TABLE `enrollments` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `student_id` int NOT NULL,
+  `class_id` int NOT NULL,
+  `attendance_score` float DEFAULT '0',
+  `midterm_score` float DEFAULT NULL,
+  `practice_score` float DEFAULT NULL,
+  `final_score` float DEFAULT NULL,
+  `total_10` float DEFAULT NULL,
+  `total_4` float DEFAULT NULL,
+  `letter_grade` varchar(5) DEFAULT NULL,
+  `is_passed` tinyint(1) DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_enrollment` (`student_id`,`class_id`),
+  CONSTRAINT `fk_enroll_class` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`),
+  CONSTRAINT `fk_enroll_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- SV1 đăng ký lớp Python (Đã có điểm)
+INSERT INTO `enrollments` VALUES (1, 1, 1, 9.0, 8.0, NULL, 7.5, 7.8, 3.0, 'B', 1);
+-- SV1 đăng ký lớp Web (Chưa có điểm)
+INSERT INTO `enrollments` VALUES (2, 1, 2, 0, NULL, NULL, NULL, NULL, NULL, NULL, 0);
+
+SET FOREIGN_KEY_CHECKS = 1;

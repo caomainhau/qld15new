@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="alert alert-info">
+    <i class="fas fa-info-circle"></i> Đang đăng ký cho: <strong>{{ semester.name }}</strong>
+</div>
+
+<div class="card shadow">
+    <div class="card-header bg-primary text-white">Danh sách Lớp học phần đang mở</div>
+    <div class="card-body">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Mã HP</th>
+                    <th>Tên Lớp</th>
+                    <th>Giảng viên</th>
+                    <th>Lịch học</th>
+                    <th>Tín chỉ</th>
+                    <th>Đăng ký</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cls in classes %}
+                <tr>
+                    <td>{{ cls.subject.code }}</td>
+                    <td>{{ cls.name }} <br> <small class="text-muted">{{ cls.subject.name }}</small></td>
+                    <td>{{ cls.teacher.user.full_name }}</td>
+                    <td>
+                        {% for sch in cls.schedules %}
+                        <div class="small">
+                            T{{ sch.day_of_week }}: {{ sch.start_lesson }}-{{ sch.end_lesson }} ({{ sch.room }})
+                        </div>
+                        {% endfor %}
+                    </td>
+                    <td>{{ cls.subject.credits }}</td>
+                    <td>
+                        {% if cls.id in my_enrollments %}
+                            <button class="btn btn-secondary btn-sm" disabled>Đã ĐK</button>
+                        {% else %}
+                            <form method="POST">
+                                <input type="hidden" name="class_id" value="{{ cls.id }}">
+                                <button type="submit" class="btn btn-primary btn-sm">Đăng ký</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

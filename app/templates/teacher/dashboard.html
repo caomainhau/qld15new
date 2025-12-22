@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">Danh sách Lớp giảng dạy</h2>
+
+<div class="row">
+    {% for cls in classes %}
+    <div class="col-md-4 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-primary text-white">
+                {{ cls.subject.name }}
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ cls.name }}</h5>
+                <p class="card-text">
+                    <i class="fas fa-users"></i> Sĩ số: {{ cls.enrollments|length }} / {{ cls.max_students }}<br>
+                    <i class="fas fa-clock"></i> Học kỳ: {{ cls.semester_id }}
+                </p>
+                <a href="{{ url_for('teacher.input_grades', class_id=cls.id) }}" class="btn btn-warning w-100">
+                    <i class="fas fa-pen"></i> Nhập điểm
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12"><p>Bạn chưa được phân công lớp nào.</p></div>
+    {% endfor %}
+</div>
+{% endblock %}

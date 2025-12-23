@@ -3,6 +3,7 @@ from flask import abort
 from flask_login import current_user
 import string
 import secrets
+from datetime import timedelta
 
 # Decorator yêu cầu quyền Admin
 def admin_required(f):
@@ -73,3 +74,50 @@ def get_letter_grade(score_4):
     if score_4 >= 2.0: return 'C'
     if score_4 >= 1.0: return 'D'
     return 'F'
+
+
+def get_valid_class_dates(schedule, semester):
+    """
+    Trả về danh sách các ngày cụ thể (dd/mm/yyyy) mà lớp này có lịch học
+    trong khoảng thời gian của học kỳ.
+    schedule.day_of_week: 2 (Thứ 2) -> 8 (CN)
+    """
+    valid_dates = []
+
+    # Python weekday(): 0=Thứ 2, 1=Thứ 3, ..., 6=CN
+    # DB của mình: 2=Thứ 2, ..., 8=CN. => Cần trừ đi 2 để khớp với Python
+    target_weekday = schedule.day_of_week - 2
+
+    current_date = semester.start_date
+    while current_date <= semester.end_date:
+        if current_date.weekday() == target_weekday:
+            valid_dates.append(current_date)
+        current_date += timedelta(days=1)
+
+    return valid_dates
+
+
+def check_schedule_conflict(new_class_id, day, start, end, room, semester_id):
+    """
+    Kiểm tra trùng lịch: Cùng phòng, cùng thứ, giao nhau về tiết học
+    """
+    from .models import Schedule, Class
+
+    # Lấy tất cả lịch trong học kỳ này
+    existing_schedules = Schedule.query.join(Class).filter(
+        Class.semester_id == semester_id,
+        Schedule.day_of_week == day,
+        Schedule.room == room,
+        Schedule.is_canceled == False
+    ).all()
+
+    for sch in existing_schedules:
+        # Bỏ qua chính nó (trường hợp update)
+        if sch.class_id == new_class_id:
+            continue
+
+        # Kiểm tra giao nhau: (StartA < EndB) and (EndA > StartB)
+        if (start <= sch.end_lesson) and (end >= sch.start_lesson):
+            return sch  # Trả về lịch bị trùng
+
+    return None

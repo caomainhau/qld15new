@@ -2,32 +2,90 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Quản lý Sinh viên</h2>
+    <h3 class="fw-bold text-primary">Quản lý Sinh viên</h3>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStudentModal">
         <i class="fas fa-plus"></i> Thêm Sinh viên
     </button>
 </div>
 
+<div class="card mb-4 bg-light border-0">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">Ngành học</label>
+                <select name="major" class="form-select">
+                    <option value="">-- Tất cả --</option>
+                    {% for m in all_majors %}
+                        <option value="{{ m[0] }}" {% if request.args.get('major') == m[0] %}selected{% endif %}>
+                            {{ m[0] }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted">Khóa</label>
+                <select name="cohort" class="form-select">
+                    <option value="">-- Tất cả --</option>
+                    {% for c in all_cohorts %}
+                        <option value="{{ c[0] }}" {% if request.args.get('cohort') == c[0] %}selected{% endif %}>
+                            {{ c[0] }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">Lớp sinh hoạt</label>
+                <input type="text" name="class_name" class="form-control"
+                       placeholder="VD: 20GIT"
+                       value="{{ request.args.get('class_name', '') }}">
+            </div>
+
+            <div class="col-md-4 d-flex align-items-end">
+                <div class="d-flex w-100 gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1">
+                        <i class="fas fa-filter"></i> Lọc dữ liệu
+                    </button>
+                    <a href="{{ url_for('admin.manage_students') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-sync"></i> Reset
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card shadow">
     <div class="card-body">
-        <table class="table table-hover">
-            <thead>
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
                 <tr>
                     <th>Mã SV</th>
-                    <th>Họ tên</th>
+                    <th>Họ và Tên</th>
+                    <th>Email</th>
                     <th>Lớp</th>
                     <th>Ngành</th>
                     <th>Khóa</th>
                 </tr>
             </thead>
             <tbody>
-                {% for student, user in students %}
+                {% for student in students %}
                 <tr>
-                    <td>{{ student.student_code }}</td>
-                    <td>{{ user.full_name }}</td>
-                    <td>{{ student.class_name }}</td>
+                    <td class="fw-bold text-primary">{{ student.student_code }}</td>
+
+                    <td class="fw-bold">{{ student.user.full_name }}</td>
+                    <td>{{ student.user.email }}</td>
+
+                    <td><span class="badge bg-secondary">{{ student.class_name }}</span></td>
                     <td>{{ student.major }}</td>
                     <td>{{ student.cohort }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                        Không tìm thấy sinh viên nào phù hợp.
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -38,45 +96,18 @@
 <div class="modal fade" id="addStudentModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST">
-                <div class="modal-header">
-                    <h5 class="modal-title">Thêm Sinh viên Mới</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Thêm Sinh viên mới</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p>Để thêm sinh viên, vui lòng sử dụng chức năng <strong>Tạo Tài Khoản</strong> chung.</p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('admin.create_user') }}" class="btn btn-success">
+                        <i class="fas fa-user-plus"></i> Đi tới trang Tạo Tài Khoản
+                    </a>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label>Họ tên</label>
-                        <input type="text" name="full_name" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label>Email (VKU)</label>
-                        <input type="email" name="email" class="form-control" placeholder="@vku.udn.vn" required>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label>Mã Sinh viên</label>
-                            <input type="text" name="student_code" class="form-control" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label>Lớp Sinh hoạt</label>
-                            <input type="text" name="class_name" class="form-control" placeholder="20GIT" required>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label>Ngành</label>
-                            <input type="text" name="major" class="form-control" placeholder="CNTT" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label>Khóa</label>
-                            <input type="text" name="cohort" class="form-control" placeholder="K20" required>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Tạo tài khoản</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>

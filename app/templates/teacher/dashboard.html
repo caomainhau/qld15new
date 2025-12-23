@@ -1,28 +1,96 @@
 {% extends "base.html" %}
-{% block content %}
-<h2 class="mb-4">Danh sách Lớp giảng dạy</h2>
 
-<div class="row">
-    {% for cls in classes %}
-    <div class="col-md-4 mb-4">
-        <div class="card shadow h-100">
-            <div class="card-header bg-primary text-white">
-                {{ cls.subject.name }}
-            </div>
-            <div class="card-body">
-                <h5 class="card-title">{{ cls.name }}</h5>
-                <p class="card-text">
-                    <i class="fas fa-users"></i> Sĩ số: {{ cls.enrollments|length }} / {{ cls.max_students }}<br>
-                    <i class="fas fa-clock"></i> Học kỳ: {{ cls.semester_id }}
-                </p>
-                <a href="{{ url_for('teacher.input_grades', class_id=cls.id) }}" class="btn btn-warning w-100">
-                    <i class="fas fa-pen"></i> Nhập điểm
-                </a>
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="text-primary fw-bold mb-0">
+                <i class="fas fa-chalkboard-teacher me-2"></i> Lớp giảng dạy
+            </h3>
+            <p class="text-muted mb-0">Quản lý các học phần được phân công</p>
+        </div>
+        <span class="badge bg-primary fs-6 rounded-pill px-3">
+            Tổng số: {{ classes|length }} lớp
+        </span>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for cls in classes %}
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0 hover-card">
+                <div class="card-header bg-gradient text-white d-flex justify-content-between align-items-center"
+                     style="background: linear-gradient(45deg, #0d6efd, #0dcaf0);">
+                    <div class="fw-bold text-truncate" title="{{ cls.subject.name }}">
+                        <i class="fas fa-book me-1"></i> {{ cls.subject.code }}
+                    </div>
+                    {% if cls.is_locked %}
+                        <span class="badge bg-danger"><i class="fas fa-lock"></i> Đã khóa</span>
+                    {% else %}
+                        <span class="badge bg-success"><i class="fas fa-check-circle"></i> Đang mở</span>
+                    {% endif %}
+                </div>
+
+                <div class="card-body">
+                    <h5 class="card-title fw-bold text-primary mb-3 text-truncate" title="{{ cls.name }}">
+                        {{ cls.name }}
+                    </h5>
+
+                    <div class="mb-3">
+                        <small class="text-muted fw-bold">Môn học:</small>
+                        <p class="mb-1 text-dark" style="height: 40px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                            {{ cls.subject.name }}
+                        </p>
+                    </div>
+
+                    <div class="d-flex justify-content-between text-muted small mb-1">
+                        <span><i class="fas fa-calendar-alt"></i> {{ cls.semester.name }}</span>
+                        <span><i class="fas fa-users"></i> {{ cls.enrollments|length }}/{{ cls.max_students }}</span>
+                    </div>
+
+                    {% set percent = (cls.enrollments|length / cls.max_students * 100) | int %}
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar {% if percent >= 100 %}bg-danger{% elif percent >= 80 %}bg-warning{% else %}bg-success{% endif %}"
+                             role="progressbar"
+                             style="width: {{ percent }}%;"
+                             aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-white border-top-0 pb-3">
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('teacher.take_attendance', class_id=cls.id) }}"
+                           class="btn btn-outline-primary w-50 {% if cls.is_locked %}disabled{% endif %}">
+                            <i class="fas fa-user-check"></i> Điểm danh
+                        </a>
+
+                        <a href="{{ url_for('teacher.input_grades', class_id=cls.id) }}"
+                           class="btn btn-primary w-50 text-white shadow-sm">
+                            <i class="fas fa-pen"></i> Nhập điểm
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
+        {% else %}
+        <div class="col-12 text-center py-5">
+            <div class="mb-3">
+                <i class="fas fa-folder-open fa-4x text-muted opacity-50"></i>
+            </div>
+            <h5 class="text-muted">Chưa có lớp học phần nào được phân công.</h5>
+            <p class="text-secondary small">Vui lòng liên hệ Admin nếu có sai sót.</p>
+        </div>
+        {% endfor %}
     </div>
-    {% else %}
-    <div class="col-12"><p>Bạn chưa được phân công lớp nào.</p></div>
-    {% endfor %}
 </div>
+
+<style>
+    /* Hiệu ứng nhấc thẻ lên khi di chuột vào */
+    .hover-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    }
+</style>
 {% endblock %}

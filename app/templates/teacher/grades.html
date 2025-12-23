@@ -46,18 +46,26 @@
         <i class="fas fa-edit"></i> Bảng điểm Sinh viên
     </div>
     <div class="card-body">
+        <div class="alert alert-info mb-3">
+            <i class="fas fa-info-circle"></i> Điểm <strong>Chuyên cần</strong> được tính tự động dựa trên dữ liệu điểm danh (10 điểm - 1 điểm/buổi nghỉ).
+        </div>
+
         <form method="POST">
              <table class="table table-bordered table-hover align-middle">
                 <thead class="table-light text-center">
                     <tr>
-                        <th>Mã SV</th>
-                        <th>Họ tên</th>
-                        <th width="100">CC (10%)</th>
-                        <th width="100">GK (30%)</th>
-                        <th width="100">CK (60%)</th>
-                        <th>T.kết (10)</th>
-                        <th>T.kết (4)</th>
-                        <th>Chữ</th>
+                        <th rowspan="2" style="vertical-align: middle;">Mã SV</th>
+                        <th rowspan="2" style="vertical-align: middle;">Họ tên</th>
+
+                        <th width="130" class="bg-light text-primary">
+                            CC ({{ subject.weight_cc }}%) <br><small class="text-muted">(Tự động)</small>
+                        </th>
+                        <th width="110">GK ({{ subject.weight_gk }}%)</th>
+                        <th width="110">CK ({{ subject.weight_ck }}%)</th>
+
+                        <th rowspan="2" style="vertical-align: middle;">Tổng (10)</th>
+                        <th rowspan="2" style="vertical-align: middle;">Tổng (4)</th>
+                        <th rowspan="2" style="vertical-align: middle;">Chữ</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -65,24 +73,28 @@
                     <tr>
                         <td>{{ enroll.student.student_code }}</td>
                         <td>{{ enroll.student.user.full_name }}</td>
+
                         <td>
-                            <input type="number" step="0.1" min="0" max="10"
-                                   name="att_{{ enroll.student_id }}"
+                            <input type="number"
                                    value="{{ enroll.attendance_score }}"
-                                   class="form-control text-center">
-                        </td>
+                                   class="form-control text-center bg-light fw-bold text-primary"
+                                   readonly
+                                   tabindex="-1"> </td>
+
                         <td>
                             <input type="number" step="0.1" min="0" max="10"
                                    name="mid_{{ enroll.student_id }}"
                                    value="{{ enroll.midterm_score or '' }}"
                                    class="form-control text-center">
                         </td>
+
                         <td>
                             <input type="number" step="0.1" min="0" max="10"
                                    name="fin_{{ enroll.student_id }}"
                                    value="{{ enroll.final_score or '' }}"
                                    class="form-control text-center">
                         </td>
+
                         <td class="text-center fw-bold">{{ enroll.total_10 or '-' }}</td>
                         <td class="text-center text-primary fw-bold">{{ enroll.total_4 or '-' }}</td>
                         <td class="text-center">{{ enroll.letter_grade or '-' }}</td>
@@ -103,22 +115,21 @@
     // --- 1. BIỂU ĐỒ ĐƯỜNG (LINE CHART) ---
     const ctxLine = document.getElementById('gradeDistributionChart').getContext('2d');
 
-    // Dữ liệu từ Python
     const labels = {{ labels | tojson }};
     const data = {{ data | tojson }};
 
     new Chart(ctxLine, {
-        type: 'line', // Đã đổi thành Line
+        type: 'line',
         data: {
             labels: labels,
             datasets: [{
                 label: 'Số lượng sinh viên',
                 data: data,
-                borderColor: 'rgba(54, 162, 235, 1)', // Màu đường kẻ (Xanh dương đậm)
-                backgroundColor: 'rgba(54, 162, 235, 0.2)', // Màu nền dưới đường kẻ (Xanh dương nhạt)
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
                 borderWidth: 3,
-                tension: 0.4, // Độ cong mềm mại (0 = thẳng đuột, 1 = rất cong)
-                fill: true,   // Tô màu vùng dưới
+                tension: 0.4,
+                fill: true,
                 pointStyle: 'circle',
                 pointRadius: 6,
                 pointHoverRadius: 8
@@ -134,7 +145,7 @@
                 }
             },
             plugins: {
-                legend: { display: false }, // Ẩn chú thích vì chỉ có 1 đường
+                legend: { display: false },
                 title: { display: true, text: 'Xu hướng phân bố điểm (Thang 10)' }
             }
         }
@@ -148,7 +159,7 @@
             labels: ['Đạt', 'Trượt'],
             datasets: [{
                 data: [{{ pass_count }}, {{ fail_count }}],
-                backgroundColor: ['#198754', '#dc3545'], // Green, Red
+                backgroundColor: ['#198754', '#dc3545'],
                 hoverOffset: 4
             }]
         },

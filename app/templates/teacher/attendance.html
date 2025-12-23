@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="text-primary fw-bold mb-0">
+                <i class="fas fa-clipboard-check me-2"></i>Điểm danh
+            </h3>
+            <p class="text-muted mb-0">Lớp: <span class="fw-bold text-dark">{{ current_class.name }}</span></p>
+        </div>
+        <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-outline-secondary border-0 hover-shadow">
+            <i class="fas fa-arrow-left me-2"></i>Quay lại
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-body p-4">
+            <form method="POST" id="attendanceForm">
+
+                <div class="row justify-content-center mb-4">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold text-secondary text-uppercase small ls-1">
+                            Chọn buổi học
+                        </label>
+                        <select id="dateSelect" name="attendance_date" class="form-select form-select-lg border-2" required>
+                            <option value="">-- Vui lòng chọn buổi học --</option>
+                            {% for session in sessions %}
+                                <option value="{{ session.value }}" {% if session.value == today_str %}selected{% endif %}>
+                                    {{ session.display }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text text-muted text-center mt-2">
+                            <i class="fas fa-info-circle me-1"></i> Chọn ngày để hiển thị danh sách sinh viên.
+                        </div>
+                    </div>
+                </div>
+
+                <div id="studentListSection" style="display: none;">
+
+                    <hr class="my-4 text-muted opacity-25">
+
+                    <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
+                        <div class="status-legend text-success">
+                            <i class="fas fa-check-circle"></i> Có mặt (0)
+                        </div>
+                        <div class="status-legend text-danger">
+                            <i class="fas fa-times-circle"></i> Vắng (-1.0)
+                        </div>
+                        <div class="status-legend text-warning">
+                            <i class="fas fa-clock"></i> Trễ (-0.5)
+                        </div>
+                        <div class="status-legend text-info">
+                            <i class="fas fa-file-medical"></i> Phép (-0.5)
+                        </div>
+                    </div>
+
+                    <div class="table-responsive rounded-3 border">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light text-secondary">
+                                <tr class="text-center text-uppercase small fw-bold">
+                                    <th style="width: 50px;">STT</th>
+                                    <th style="width: 120px;">Mã SV</th>
+                                    <th class="text-start ps-4">Thông tin Sinh viên</th>
+                                    <th style="width: 100px;" class="text-success">Có mặt</th>
+                                    <th style="width: 100px;" class="text-danger">Vắng</th>
+                                    <th style="width: 100px;" class="text-warning">Trễ</th>
+                                    <th style="width: 100px;" class="text-info">Phép</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for enroll in current_class.enrollments %}
+                                <tr class="student-row">
+                                    <td class="text-center text-muted fw-bold">{{ loop.index }}</td>
+                                    <td class="text-center fw-bold text-secondary">{{ enroll.student.student_code }}</td>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-dark">{{ enroll.student.user.full_name }}</div>
+                                        <small class="text-muted">{{ enroll.student.class_name }}</small>
+                                    </td>
+
+                                    <td class="text-center cell-action hover-bg-success">
+                                        <div class="form-check d-flex justify-content-center">
+                                            <input class="form-check-input input-success" type="radio"
+                                                   name="status_{{ enroll.student_id }}" value="present" checked>
+                                        </div>
+                                    </td>
+                                    <td class="text-center cell-action hover-bg-danger">
+                                        <div class="form-check d-flex justify-content-center">
+                                            <input class="form-check-input input-danger" type="radio"
+                                                   name="status_{{ enroll.student_id }}" value="absent">
+                                        </div>
+                                    </td>
+                                    <td class="text-center cell-action hover-bg-warning">
+                                        <div class="form-check d-flex justify-content-center">
+                                            <input class="form-check-input input-warning" type="radio"
+                                                   name="status_{{ enroll.student_id }}" value="late">
+                                        </div>
+                                    </td>
+                                    <td class="text-center cell-action hover-bg-info">
+                                        <div class="form-check d-flex justify-content-center">
+                                            <input class="form-check-input input-info" type="radio"
+                                                   name="status_{{ enroll.student_id }}" value="excused">
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-4 pt-2">
+                        <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm fw-bold">
+                            <i class="fas fa-save me-2"></i> LƯU DỮ LIỆU
+                        </button>
+                    </div>
+                </div>
+                </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const dateSelect = document.getElementById('dateSelect');
+        const studentListSection = document.getElementById('studentListSection');
+
+        function toggleList() {
+            if (dateSelect.value !== "") {
+                studentListSection.style.display = "block";
+                // Hiệu ứng cuộn nhẹ xuống nếu người dùng chọn ngày
+                // studentListSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                studentListSection.style.display = "none";
+            }
+        }
+
+        // Chạy khi thay đổi select
+        dateSelect.addEventListener('change', toggleList);
+
+        // Chạy ngay khi tải trang (để hiện list nếu đã có ngày chọn sẵn từ server)
+        toggleList();
+    });
+</script>
+
+<style>
+    /* Chú thích trạng thái */
+    .status-legend {
+        font-size: 0.9rem;
+        font-weight: 600;
+        padding: 5px 15px;
+        background: #f8f9fa;
+        border-radius: 20px;
+        border: 1px solid #e9ecef;
+    }
+
+    /* Tùy chỉnh Radio Button cho đẹp và đúng màu */
+    .form-check-input {
+        width: 1.4em;
+        height: 1.4em;
+        cursor: pointer;
+        border: 2px solid #adb5bd;
+    }
+
+    .input-success:checked {
+        background-color: #198754;
+        border-color: #198754;
+    }
+    .input-danger:checked {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+    .input-warning:checked {
+        background-color: #ffc107;
+        border-color: #ffc107;
+    }
+    .input-info:checked {
+        background-color: #0dcaf0;
+        border-color: #0dcaf0;
+    }
+
+    /* Hiệu ứng khi di chuột vào ô */
+    .cell-action {
+        transition: background-color 0.2s;
+    }
+    .hover-bg-success:hover { background-color: rgba(25, 135, 84, 0.05); }
+    .hover-bg-danger:hover { background-color: rgba(220, 53, 69, 0.05); }
+    .hover-bg-warning:hover { background-color: rgba(255, 193, 7, 0.05); }
+    .hover-bg-info:hover { background-color: rgba(13, 202, 240, 0.05); }
+
+    .ls-1 { letter-spacing: 1px; }
+</style>
+{% endblock %}

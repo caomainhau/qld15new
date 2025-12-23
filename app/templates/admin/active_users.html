@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold text-success">
+        <i class="fas fa-signal"></i> Người dùng đang Online
+    </h3>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">Quay lại</a>
+</div>
+
+<div class="card shadow border-0 border-top border-4 border-success">
+    <div class="card-body">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Danh sách các tài khoản có hoạt động trong <strong>5 phút</strong> gần đây.
+        </div>
+
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>STT</th>
+                    <th>Họ tên</th>
+                    <th>Email</th>
+                    <th>Vai trò</th>
+                    <th>Hoạt động lúc</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in online_users %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td class="fw-bold">{{ user.full_name }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        {% if user.role == 'admin' %}
+                            <span class="badge bg-danger">Admin</span>
+                        {% elif user.role == 'teacher' %}
+                            <span class="badge bg-primary">Giảng viên</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Sinh viên</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                         {{ (user.last_seen).strftime('%H:%M:%S - %d/%m') }}
+                    </td>
+                    <td>
+                        <span class="badge bg-success rounded-pill">
+                            <i class="fas fa-circle" style="font-size: 8px;"></i> Online
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                        Hiện không có người dùng nào khác đang online.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

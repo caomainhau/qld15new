@@ -1,39 +1,110 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Quản lý Lớp Học phần</h2>
+    <h3 class="fw-bold text-primary">Quản lý Lớp học phần</h3>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addClassModal">
-        <i class="fas fa-plus"></i> Mở Lớp Mới
+        <i class="fas fa-plus"></i> Thêm Lớp Mới
     </button>
+</div>
+
+<div class="card mb-4 shadow-sm border-0 bg-light">
+    <div class="card-body">
+        <h6 class="fw-bold text-muted mb-3"><i class="fas fa-filter"></i> Bộ lọc & Tìm kiếm:</h6>
+        <form method="GET" class="row g-3">
+
+            <div class="col-md-3">
+                <select name="semester_id" class="form-select">
+                    <option value="">-- Tất cả Học kỳ --</option>
+                    {% for sem in semesters %}
+                    <option value="{{ sem.id }}" {% if request.args.get('semester_id')|int == sem.id %}selected{% endif %}>
+                        {{ sem.name }} {% if not sem.is_active %}(Đã đóng){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <select name="department" class="form-select">
+                    <option value="">-- Tất cả Khoa --</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept[0] }}" {% if request.args.get('department') == dept[0] %}selected{% endif %}>
+                        Khoa: {{ dept[0] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <select name="subject_id" class="form-select">
+                    <option value="">-- Tất cả Môn học --</option>
+                    {% for sub in subjects %}
+                    <option value="{{ sub.id }}" {% if request.args.get('subject_id')|int == sub.id %}selected{% endif %}>
+                        {{ sub.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <select name="teacher_id" class="form-select">
+                    <option value="">-- Tất cả Giảng viên --</option>
+                    {% for t in teachers %}
+                    <option value="{{ t.id }}" {% if request.args.get('teacher_id')|int == t.id %}selected{% endif %}>
+                        {{ t.user.full_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-12 text-end">
+                <a href="{{ url_for('admin.manage_classes') }}" class="btn btn-outline-secondary me-2">Đặt lại</a>
+                <button type="submit" class="btn btn-primary px-4"><i class="fas fa-search"></i> Tìm kiếm</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <div class="card shadow">
     <div class="card-body">
-        <table class="table table-bordered table-hover">
+        <table class="table table-hover align-middle">
             <thead class="table-light">
                 <tr>
-                    <th>Tên Lớp</th>
-                    <th>Học phần</th>
+                    <th>ID</th>
+                    <th>Tên lớp</th>
+                    <th>Môn học</th>
                     <th>Giảng viên</th>
+                    <th>Học kỳ</th>
                     <th>Sĩ số</th>
-                    <th>Lịch học</th>
-                    <th>Hành động</th>
+                    <th>Trạng thái</th>
                 </tr>
             </thead>
             <tbody>
                 {% for cls in classes %}
                 <tr>
-                    <td>{{ cls.name }}</td>
-                    <td>{{ cls.subject_id }}</td> <td>{{ cls.teacher.user.full_name }}</td>
-                    <td>0 / {{ cls.max_students }}</td>
+                    <td>{{ cls.id }}</td>
+                    <td class="fw-bold text-primary">{{ cls.name }}</td>
                     <td>
-                        <a href="{{ url_for('admin.manage_class_schedule', class_id=cls.id) }}" class="btn btn-sm btn-outline-info">
-                            <i class="fas fa-calendar-alt"></i> Xếp lịch
-                        </a>
+                        {{ cls.subject.name }} <br>
+                        <small class="text-muted">{{ cls.subject.credits }} tín chỉ</small>
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+                        {{ cls.teacher.user.full_name }} <br>
+                        <small class="text-muted">{{ cls.teacher.department }}</small>
                     </td>
+                    <td>{{ cls.semester.name }}</td>
+                    <td>{{ cls.enrollments|length }}/{{ cls.max_students }}</td>
+                    <td>
+                        {% if cls.is_locked %}
+                            <span class="badge bg-danger">Đã khóa</span>
+                        {% else %}
+                            <span class="badge bg-success">Đang học</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">Không tìm thấy lớp học phần nào phù hợp.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -41,39 +112,121 @@
     </div>
 </div>
 
-<div class="modal fade" id="addClassModal" tabindex="-1">
-    <div class="modal-dialog">
+<div class="modal fade" id="addClassModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form method="POST">
-                <div class="modal-header"><h5 class="modal-title">Mở Lớp Học phần</h5></div>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-plus-circle"></i> Tạo Lớp Học Phần Mới</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form method="POST" action="{{ url_for('admin.manage_classes') }}">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label>Tên Lớp (Nhóm)</label>
-                        <input type="text" name="name" class="form-control" placeholder="VD: Nhóm 1 - K23" required>
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Học kỳ <span class="text-danger">*</span></label>
+                            <select class="form-select" name="semester_id" id="select-semester" required>
+                                <option value="" selected disabled>-- Chọn học kỳ --</option>
+                                {% for sem in semesters %}
+                                    <option value="{{ sem.id }}" {% if not sem.is_active %}disabled class="text-muted bg-light"{% endif %}>
+                                        {{ sem.name }} {% if not sem.is_active %}(Đã khóa){% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Môn học <span class="text-danger">*</span></label>
+                            <select class="form-select" name="subject_id" id="select-subject" required>
+                                <option value="" selected disabled data-name="">-- Chọn môn học --</option>
+                                {% for sub in subjects %}
+                                    <option value="{{ sub.id }}" data-name="{{ sub.name }}">
+                                        {{ sub.name }} ({{ sub.code }}) - {{ sub.credits }} TC
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Tên lớp học phần <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fas fa-signature"></i></span>
+                                <input type="text" class="form-control fw-bold text-primary"
+                                       name="name" id="input-name"
+                                       placeholder="Vui lòng chọn Học kỳ và Môn học trước..." required>
+                            </div>
+                            <div class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> Tên lớp tự động: [Tên Môn] - Nhóm [Số thứ tự].
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Sĩ số tối đa</label>
+                            <input type="number" class="form-control" name="max_students" value="60" min="10" max="200" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Giảng viên phụ trách <span class="text-danger">*</span></label>
+                            <select class="form-select" name="teacher_id" required>
+                                <option value="" selected disabled>-- Chọn giảng viên --</option>
+                                {% for t in teachers %}
+                                    <option value="{{ t.id }}">{{ t.user.full_name }} ({{ t.department }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
                     </div>
-                    <div class="mb-3">
-                        <label>Môn học</label>
-                        <select name="subject_id" class="form-select">
-                            {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label>Học kỳ</label>
-                        <select name="semester_id" class="form-select">
-                            {% for sem in semesters %}<option value="{{ sem.id }}">{{ sem.name }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label>Giảng viên phụ trách</label>
-                        <select name="teacher_id" class="form-select">
-                            {% for t, u in teachers %}<option value="{{ t.id }}">{{ u.full_name }} - {{ t.department }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3"><label>Max SV</label><input type="number" name="max_students" value="60" class="form-control"></div>
                 </div>
-                <div class="modal-footer"><button type="submit" class="btn btn-primary">Lưu</button></div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Lưu Lớp Học</button>
+                </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const semesterSelect = document.getElementById('select-semester');
+        const subjectSelect = document.getElementById('select-subject');
+        const nameInput = document.getElementById('input-name');
+
+        function updateClassName() {
+            const semesterId = semesterSelect.value;
+            const subjectId = subjectSelect.value;
+
+            // Lấy tên môn học từ attribute data-name
+            const selectedOption = subjectSelect.options[subjectSelect.selectedIndex];
+            const subjectName = selectedOption.getAttribute('data-name');
+
+            // Chỉ chạy khi đã chọn cả Semester và Subject
+            if (semesterId && subjectId && subjectName) {
+                // Hiển thị trạng thái đang tải...
+                nameInput.placeholder = "Đang tạo tên lớp...";
+
+                // Gọi API backend
+                fetch(`/admin/api/get_next_group?semester_id=${semesterId}&subject_id=${subjectId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Cập nhật giá trị vào ô input
+                        nameInput.value = `${subjectName} - Nhóm ${data.next_group}`;
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        nameInput.placeholder = "Lỗi khi tạo tên tự động";
+                    });
+            }
+        }
+
+        // Lắng nghe sự kiện thay đổi
+        semesterSelect.addEventListener('change', updateClassName);
+        subjectSelect.addEventListener('change', updateClassName);
+    });
+</script>
+
 {% endblock %}

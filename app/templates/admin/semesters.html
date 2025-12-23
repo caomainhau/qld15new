@@ -2,46 +2,50 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Quản lý Học kỳ</h2>
+    <h3 class="fw-bold text-primary">Quản lý Học kỳ</h3>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSemesterModal">
-        <i class="fas fa-plus"></i> Thêm Học kỳ
+        <i class="fas fa-plus"></i> Tạo Học Kỳ Mới
     </button>
 </div>
 
 <div class="card shadow">
     <div class="card-body">
-        <table class="table table-hover">
-            <thead>
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
                 <tr>
-                    <th>ID</th>
-                    <th>Tên Học kỳ</th>
-                    <th>Ngày bắt đầu</th>
-                    <th>Ngày kết thúc</th>
+                    <th>Tên học kỳ</th>
+                    <th>Thời gian</th>
                     <th>Trạng thái</th>
-                    <th>Hành động</th>
+                    <th class="text-center">Hành động</th>
                 </tr>
             </thead>
             <tbody>
                 {% for sem in semesters %}
                 <tr>
-                    <td>{{ sem.id }}</td>
-                    <td>{{ sem.name }}</td>
-                    <td>{{ sem.start_date.strftime('%d/%m/%Y') }}</td>
-                    <td>{{ sem.end_date.strftime('%d/%m/%Y') }}</td>
+                    <td class="fw-bold">{{ sem.name }}</td>
                     <td>
-                        {% if sem.is_active %}
-                            <span class="badge bg-success">Đang diễn ra</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Đã kết thúc</span>
-                        {% endif %}
+                        {{ sem.start_date.strftime('%d/%m/%Y') }} - {{ sem.end_date.strftime('%d/%m/%Y') }}
                     </td>
                     <td>
-                        <a href="{{ url_for('admin.toggle_semester', id=sem.id) }}" class="btn btn-sm btn-outline-warning">
-                            <i class="fas fa-sync-alt"></i> Đổi trạng thái
-                        </a>
-                        <a href="{{ url_for('admin.delete_semester', id=sem.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc chắn xóa?')">
-                            <i class="fas fa-trash"></i>
-                        </a>
+                        {% if sem.is_active %}
+                            <span class="badge bg-success p-2">Đang hoạt động</span>
+                        {% else %}
+                            <span class="badge bg-secondary p-2">Đã kết thúc</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if sem.is_active %}
+                        <form action="{{ url_for('admin.close_semester', id=sem.id) }}" method="POST"
+                              onsubmit="return confirm('CẢNH BÁO QUAN TRỌNG:\n\nKhi kết thúc học kỳ:\n1. Giảng viên sẽ KHÔNG THỂ sửa điểm hay điểm danh được nữa.\n2. Toàn bộ lớp học sẽ bị khóa.\n3. Thời khóa biểu sẽ ẩn đi.\n\nBạn có chắc chắn muốn chốt học kỳ này không?');">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="fas fa-lock"></i> Kết thúc HK
+                            </button>
+                        </form>
+                        {% else %}
+                        <button class="btn btn-secondary btn-sm" disabled>
+                            <i class="fas fa-check"></i> Đã chốt
+                        </button>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -53,28 +57,30 @@
 <div class="modal fade" id="addSemesterModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="{{ url_for('admin.manage_semesters') }}" method="POST">
-                <div class="modal-header">
-                    <h5 class="modal-title">Thêm Học kỳ Mới</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Tạo Học Kỳ Mới</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label>Tên Học kỳ</label>
-                        <input type="text" name="name" class="form-control" placeholder="VD: Học kỳ 1 năm học 2024-2025" required>
+                        <label class="form-label">Tên học kỳ</label>
+                        <input type="text" name="name" class="form-control" placeholder="VD: Học kỳ 2 năm 2024-2025" required>
                     </div>
-                    <div class="mb-3">
-                        <label>Ngày bắt đầu</label>
-                        <input type="date" name="start_date" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label>Ngày kết thúc</label>
-                        <input type="date" name="end_date" class="form-control" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Ngày bắt đầu</label>
+                            <input type="date" name="start_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Ngày kết thúc</label>
+                            <input type="date" name="end_date" class="form-control" required>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-primary">Lưu</button>
+                    <button type="submit" class="btn btn-primary">Tạo mới</button>
                 </div>
             </form>
         </div>

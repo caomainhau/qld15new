@@ -1,168 +1,99 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
+from datetime import datetime, timedelta
 from . import admin
 from .. import db
-from ..models import Semester
-from ..utils import admin_required
-from datetime import datetime
-from ..models import User, Teacher, Student
-from ..utils import generate_random_password # Import hàm mới
-from sqlalchemy.exc import IntegrityError
-from ..models import Subject, Class, Schedule, Semester, Teacher
-from sqlalchemy import and_
-from ..models import Student, Teacher, Subject, Class, User
+from ..models import User, Student, Teacher, Subject, Class, Semester, Schedule, Enrollment
+from ..utils import admin_required, check_schedule_conflict
+
 
 # --- DASHBOARD ---
 @admin.route('/dashboard')
 @login_required
 @admin_required
 def dashboard():
-    # Thống kê số lượng
     stats = {
         'total_students': Student.query.count(),
         'total_teachers': Teacher.query.count(),
-        'total_subjects': Subject.query.count(),
-        'active_classes': Class.query.filter_by(is_locked=False).count(),
-        'total_users': User.query.count()
+        'total_classes': Class.query.count(),
+        'active_semesters': Semester.query.filter_by(is_active=True).count()
     }
     return render_template('admin/dashboard.html', stats=stats)
 
 
-# --- QUẢN LÝ HỌC KỲ ---
-@admin.route('/semesters', methods=['GET', 'POST'])
+# --- THEO DÕI NGƯỜI DÙNG ONLINE ---
+@admin.route('/active_users')
 @login_required
 @admin_required
-def manage_semesters():
-    if request.method == 'POST':
-        # Xử lý thêm mới học kỳ
-        name = request.form.get('name')
-        start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d')
-        end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d')
-
-        # Logic: Tắt các học kỳ khác nếu học kỳ mới được set là Active (Tạm thời để mặc định active)
-        new_sem = Semester(name=name, start_date=start_date, end_date=end_date)
-        db.session.add(new_sem)
-        db.session.commit()
-        flash('Đã thêm học kỳ mới thành công!', 'success')
-        return redirect(url_for('admin.manage_semesters'))
-
-    semesters = Semester.query.order_by(Semester.start_date.desc()).all()
-    return render_template('admin/semesters.html', semesters=semesters)
+def active_users():
+    now = datetime.utcnow()
+    five_min_ago = now - timedelta(minutes=5)
+    online_users = User.query.filter(User.last_seen >= five_min_ago).order_by(User.last_seen.desc()).all()
+    return render_template('admin/active_users.html', online_users=online_users)
 
 
-@admin.route('/semesters/delete/<int:id>')
+# --- 1. QUẢN LÝ SINH VIÊN ---
+@admin.route('/students', methods=['GET', 'POST'])
 @login_required
 @admin_required
-def delete_semester(id):
-    sem = Semester.query.get_or_404(id)
-    # Kiểm tra ràng buộc: Nếu học kỳ đã có lớp học thì không được xóa (Sẽ làm kỹ hơn sau)
-    db.session.delete(sem)
-    db.session.commit()
-    flash('Đã xóa học kỳ.', 'success')
-    return redirect(url_for('admin.manage_semesters'))
+def manage_students():
+    query = Student.query
+    f_major = request.args.get('major')
+    f_cohort = request.args.get('cohort')
+    f_class = request.args.get('class_name')
+
+    if f_major: query = query.filter(Student.major == f_major)
+    if f_cohort: query = query.filter(Student.cohort == f_cohort)
+    if f_class: query = query.filter(Student.class_name.contains(f_class))
+
+    students = query.all()
+    all_majors = db.session.query(Student.major).distinct().all()
+    all_cohorts = db.session.query(Student.cohort).distinct().all()
+
+    return render_template('admin/students.html', students=students, all_majors=all_majors, all_cohorts=all_cohorts)
 
 
-@admin.route('/semesters/toggle/<int:id>')
-@login_required
-@admin_required
-def toggle_semester(id):
-    sem = Semester.query.get_or_404(id)
-    sem.is_active = not sem.is_active
-    db.session.commit()
-    flash(f'Đã đổi trạng thái học kỳ {sem.name}', 'info')
-    return redirect(url_for('admin.manage_semesters'))
-
-
-# --- QUẢN LÝ GIẢNG VIÊN ---
+# --- 2. QUẢN LÝ GIẢNG VIÊN ---
 @admin.route('/teachers', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def manage_teachers():
+    # XỬ LÝ POST: THÊM GIẢNG VIÊN
     if request.method == 'POST':
         email = request.form.get('email')
         full_name = request.form.get('full_name')
         teacher_code = request.form.get('teacher_code')
         department = request.form.get('department')
 
-        if not email.endswith('@vku.udn.vn'):
-            flash('Email phải có đuôi @vku.udn.vn', 'danger')
-            return redirect(url_for('admin.manage_teachers'))
-
-        # 1. Sinh mật khẩu
-        random_pass = generate_random_password()
-
-        try:
-            # 2. Tạo User
-            user = User(email=email, full_name=full_name, role='teacher')
-            user.set_password(random_pass)
-            db.session.add(user)
-            db.session.flush()  # Để lấy user.id ngay lập tức
-
-            # 3. Tạo Teacher Profile
-            teacher = Teacher(user_id=user.id, teacher_code=teacher_code, department=department)
-            db.session.add(teacher)
+        if User.query.filter_by(email=email).first():
+            flash(f'Email {email} đã tồn tại!', 'danger')
+        elif Teacher.query.filter_by(teacher_code=teacher_code).first():
+            flash(f'Mã GV {teacher_code} đã tồn tại!', 'danger')
+        else:
+            new_user = User(email=email, full_name=full_name, role='teacher')
+            new_user.set_password('123456')
+            db.session.add(new_user)
             db.session.commit()
 
-            # 4. Thông báo mật khẩu (QUAN TRỌNG)
-            flash(f'Đã tạo giảng viên {full_name}. Mật khẩu khởi tạo là: {random_pass}', 'password_reveal')
-        except IntegrityError:
-            db.session.rollback()
-            flash('Lỗi: Email hoặc Mã giảng viên đã tồn tại!', 'danger')
-
+            new_teacher = Teacher(user_id=new_user.id, teacher_code=teacher_code, department=department)
+            db.session.add(new_teacher)
+            db.session.commit()
+            flash(f'Đã thêm GV {full_name}.', 'success')
         return redirect(url_for('admin.manage_teachers'))
 
-    # Query danh sách giảng viên kèm thông tin user
-    teachers = db.session.query(Teacher, User).join(User).all()
-    return render_template('admin/teachers.html', teachers=teachers)
+    # XỬ LÝ GET: LỌC VÀ HIỂN THỊ
+    query = Teacher.query
+    department = request.args.get('department')
+    if department:
+        query = query.filter(Teacher.department == department)
+
+    teachers = query.all()
+    departments = db.session.query(Teacher.department).distinct().all()
+
+    return render_template('admin/teachers.html', teachers=teachers, departments=departments)
 
 
-# --- QUẢN LÝ SINH VIÊN ---
-@admin.route('/students', methods=['GET', 'POST'])
-@login_required
-@admin_required
-def manage_students():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        full_name = request.form.get('full_name')
-        student_code = request.form.get('student_code')
-        class_name = request.form.get('class_name')
-        major = request.form.get('major')
-        cohort = request.form.get('cohort')
-
-        if not email.endswith('@vku.udn.vn'):
-            flash('Email phải có đuôi @vku.udn.vn', 'danger')
-            return redirect(url_for('admin.manage_students'))
-
-        random_pass = generate_random_password()
-
-        try:
-            user = User(email=email, full_name=full_name, role='student')
-            user.set_password(random_pass)
-            db.session.add(user)
-            db.session.flush()
-
-            student = Student(
-                user_id=user.id,
-                student_code=student_code,
-                class_name=class_name,
-                major=major,
-                cohort=cohort
-            )
-            db.session.add(student)
-            db.session.commit()
-
-            flash(f'Đã tạo sinh viên {full_name}. Mật khẩu khởi tạo là: {random_pass}', 'password_reveal')
-        except IntegrityError:
-            db.session.rollback()
-            flash('Lỗi: Email hoặc Mã sinh viên đã tồn tại!', 'danger')
-
-        return redirect(url_for('admin.manage_students'))
-
-    students = db.session.query(Student, User).join(User).all()
-    return render_template('admin/students.html', students=students)
-
-
-# --- QUẢN LÝ HỌC PHẦN (MÔN HỌC) ---
+# --- 3. QUẢN LÝ MÔN HỌC ---
 @admin.route('/subjects', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -171,26 +102,68 @@ def manage_subjects():
         code = request.form.get('code')
         name = request.form.get('name')
         credits = request.form.get('credits')
+        w_cc = int(request.form.get('weight_cc', 10))
+        w_gk = int(request.form.get('weight_gk', 30))
+        w_ck = int(request.form.get('weight_ck', 60))
 
-        # Kiểm tra mã môn trùng
-        if Subject.query.filter_by(code=code).first():
-            flash(f'Mã học phần {code} đã tồn tại!', 'danger')
+        if (w_cc + w_gk + w_ck) != 100:
+            flash('Tổng tỷ lệ % phải bằng 100!', 'danger')
+        elif Subject.query.filter_by(code=code).first():
+            flash(f'Mã {code} đã tồn tại!', 'danger')
         else:
-            sub = Subject(code=code, name=name, credits=credits)
+            sub = Subject(code=code, name=name, credits=credits, weight_cc=w_cc, weight_gk=w_gk, weight_ck=w_ck)
             db.session.add(sub)
             db.session.commit()
-            flash('Thêm học phần thành công.', 'success')
+            flash('Thêm môn học thành công.', 'success')
         return redirect(url_for('admin.manage_subjects'))
 
     subjects = Subject.query.all()
     return render_template('admin/subjects.html', subjects=subjects)
 
 
-# --- QUẢN LÝ LỚP HỌC PHẦN ---
+# --- 4. API & QUẢN LÝ LỚP HỌC PHẦN ---
+
+# [NEW] API Lấy số nhóm tiếp theo (cho JS gọi)
+@admin.route('/api/get_next_group', methods=['GET'])
+@login_required
+def get_next_group():
+    subject_id = request.args.get('subject_id')
+    semester_id = request.args.get('semester_id')
+
+    if not subject_id or not semester_id:
+        return jsonify({'next_group': '01'})
+
+    # Đếm số lớp hiện có của môn này trong học kỳ này
+    count = Class.query.filter_by(subject_id=subject_id, semester_id=semester_id).count()
+
+    # Format thành chuỗi 2 chữ số: 1 -> "01", 10 -> "10"
+    next_number = str(count + 1).zfill(2)
+
+    return jsonify({'next_group': next_number})
+
+
 @admin.route('/classes', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def manage_classes():
+    query = Class.query.join(Subject).join(Teacher).join(Semester)
+
+    f_sem = request.args.get('semester_id')
+    f_dept = request.args.get('department')
+    f_sub = request.args.get('subject_id')
+    f_teacher = request.args.get('teacher_id')
+
+    if f_sem: query = query.filter(Class.semester_id == f_sem)
+    if f_dept: query = query.filter(Teacher.department == f_dept)
+    if f_sub: query = query.filter(Class.subject_id == f_sub)
+    if f_teacher: query = query.filter(Class.teacher_id == f_teacher)
+
+    classes = query.all()
+    semesters = Semester.query.order_by(Semester.start_date.desc()).all()
+    teachers = Teacher.query.all()
+    subjects = Subject.query.all()
+    departments = db.session.query(Teacher.department).distinct().all()
+
     if request.method == 'POST':
         name = request.form.get('name')
         subject_id = request.form.get('subject_id')
@@ -198,92 +171,146 @@ def manage_classes():
         teacher_id = request.form.get('teacher_id')
         max_students = request.form.get('max_students')
 
-        new_class = Class(
-            name=name,
-            subject_id=subject_id,
-            semester_id=semester_id,
-            teacher_id=teacher_id,
-            max_students=max_students
-        )
-        db.session.add(new_class)
-        db.session.commit()
-        flash('Đã mở lớp học phần mới.', 'success')
+        sem_check = Semester.query.get(semester_id)
+        if not sem_check.is_active:
+            flash('Học kỳ đã kết thúc, không thể tạo lớp!', 'danger')
+        else:
+            new_class = Class(name=name, subject_id=subject_id, semester_id=semester_id, teacher_id=teacher_id,
+                              max_students=max_students)
+            db.session.add(new_class)
+            db.session.commit()
+            flash(f'Thêm lớp "{name}" thành công.', 'success')
         return redirect(url_for('admin.manage_classes'))
 
-    # Load dữ liệu cho các thẻ <select>
-    classes = Class.query.order_by(Class.id.desc()).all()
-    subjects = Subject.query.all()
-    semesters = Semester.query.filter_by(is_active=True).all()
-    teachers = db.session.query(Teacher, User).join(User).all()
-
-    return render_template('admin/classes.html',
-                           classes=classes, subjects=subjects,
-                           semesters=semesters, teachers=teachers)
+    return render_template('admin/classes.html', classes=classes, semesters=semesters, teachers=teachers,
+                           subjects=subjects, departments=departments)
 
 
-# --- XẾP LỊCH & CHECK TRÙNG (CORE FEATURE) ---
-@admin.route('/class/<int:class_id>/schedule', methods=['GET', 'POST'])
+# --- 5. QUẢN LÝ HỌC KỲ ---
+@admin.route('/semesters', methods=['GET', 'POST'])
 @login_required
 @admin_required
-def manage_class_schedule(class_id):
-    current_class = Class.query.get_or_404(class_id)
+def manage_semesters():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        start = request.form.get('start_date')
+        end = request.form.get('end_date')
+        new_sem = Semester(name=name, start_date=datetime.strptime(start, '%Y-%m-%d'),
+                           end_date=datetime.strptime(end, '%Y-%m-%d'), is_active=True)
+        db.session.add(new_sem)
+        db.session.commit()
+        flash('Tạo học kỳ thành công.', 'success')
+        return redirect(url_for('admin.manage_semesters'))
+
+    semesters = Semester.query.order_by(Semester.start_date.desc()).all()
+    return render_template('admin/semesters.html', semesters=semesters)
+
+
+@admin.route('/semester/<int:id>/close', methods=['POST'])
+@login_required
+@admin_required
+def close_semester(id):
+    semester = Semester.query.get_or_404(id)
+    unfinished_classes = []
+
+    for cls in semester.classes:
+        if not cls.enrollments: continue
+        incomplete_count = Enrollment.query.filter_by(class_id=cls.id, total_10=None).count()
+        if incomplete_count > 0:
+            unfinished_classes.append(f"{cls.name} ({incomplete_count} SV chưa điểm)")
+
+    if unfinished_classes:
+        flash(f'KHÔNG THỂ KẾT THÚC! Lớp chưa đủ điểm: {", ".join(unfinished_classes)}', 'danger')
+    else:
+        semester.is_active = False
+        for cls in semester.classes:
+            cls.is_locked = True
+        db.session.commit()
+        flash(f'Đã kết thúc học kỳ {semester.name}.', 'success')
+    return redirect(url_for('admin.manage_semesters'))
+
+
+# --- 6. THỜI KHÓA BIỂU ---
+@admin.route('/timetable', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def manage_timetable():
+    semesters = Semester.query.order_by(Semester.start_date.desc()).all()
+    current_semester_id = request.args.get('semester_id', type=int)
+    if not current_semester_id and semesters:
+        current_semester_id = semesters[0].id
+
+    today_python = datetime.now().weekday()
+    default_day_db = today_python + 2
+    selected_day = request.args.get('day', default_day_db, type=int)
 
     if request.method == 'POST':
-        # Xử lý thêm lịch học
-        if 'add_schedule' in request.form:
-            day = int(request.form.get('day_of_week'))
-            start = int(request.form.get('start_lesson'))
-            end = int(request.form.get('end_lesson'))
-            room = request.form.get('room').strip().upper()
+        current_sem_obj = Semester.query.get(current_semester_id)
+        if not current_sem_obj.is_active:
+            flash('Học kỳ đã đóng, không thể xếp lịch!', 'danger')
+        else:
+            class_id = request.form.get('class_id')
+            day = int(request.form.get('day'))
+            start = int(request.form.get('start'))
+            count = int(request.form.get('count'))
+            room = request.form.get('room')
+            end = start + count - 1
 
-            # --- LOGIC KIỂM TRA TRÙNG LỊCH ---
-            is_conflict = False
-            conflict_msg = ""
-
-            # Lấy tất cả lịch học trong cùng HỌC KỲ này
-            # Logic: Join Schedule -> Class -> Semester
-            semester_schedules = db.session.query(Schedule, Class) \
-                .join(Class).filter(Class.semester_id == current_class.semester_id).all()
-
-            for sched, cls in semester_schedules:
-                # Chỉ kiểm tra nếu cùng Ngày trong tuần
-                if sched.day_of_week == day:
-                    # Kiểm tra trùng tiết (Overlap Logic): (StartA < EndB) and (EndA > StartB)
-                    if start < sched.end_lesson and end > sched.start_lesson:
-
-                        # 1. Trùng Giảng viên (Giảng viên này đang dạy lớp khác vào giờ này?)
-                        if cls.teacher_id == current_class.teacher_id:
-                            is_conflict = True
-                            conflict_msg = f"Giảng viên bị trùng lịch với lớp {cls.name} (Tiết {sched.start_lesson}-{sched.end_lesson})"
-                            break
-
-                        # 2. Trùng Phòng học (Phòng này đang có lớp khác học?)
-                        if sched.room == room:
-                            is_conflict = True
-                            conflict_msg = f"Phòng {room} đã có lớp {cls.name} học (Tiết {sched.start_lesson}-{sched.end_lesson})"
-                            break
-
-            if is_conflict:
-                flash(f'KHÔNG THỂ LƯU: {conflict_msg}', 'danger')
+            conflict = check_schedule_conflict(class_id, day, start, end, room, current_semester_id)
+            if conflict:
+                flash(f'LỖI: Phòng {room} trùng lịch.', 'danger')
             else:
-                new_sched = Schedule(
-                    class_info=current_class,
-                    day_of_week=day,
-                    start_lesson=start,
-                    end_lesson=end,
-                    room=room
-                )
-                db.session.add(new_sched)
+                new_sch = Schedule(class_id=class_id, day_of_week=day, start_lesson=start, end_lesson=end, room=room)
+                db.session.add(new_sch)
                 db.session.commit()
-                flash('Thêm lịch học thành công!', 'success')
+                flash('Thêm lịch thành công!', 'success')
+        return redirect(url_for('admin.manage_timetable', semester_id=current_semester_id, day=day))
 
-        # Xử lý xóa lịch
-        elif 'delete_schedule' in request.form:
-            sched_id = request.form.get('schedule_id')
-            Schedule.query.filter_by(id=sched_id).delete()
+    daily_schedules = Schedule.query.join(Class).filter(Class.semester_id == current_semester_id,
+                                                        Schedule.day_of_week == selected_day,
+                                                        Schedule.is_canceled == False).order_by(
+        Schedule.start_lesson.asc()).all()
+    active_classes = Class.query.filter_by(semester_id=current_semester_id, is_locked=False).all()
+
+    return render_template('admin/timetable.html', schedules=daily_schedules, semesters=semesters,
+                           current_semester_id=current_semester_id, classes=active_classes, selected_day=selected_day)
+
+
+# --- 7. TẠO USER CHUNG (DỰ PHÒNG) ---
+@admin.route('/create_user', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_user():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        full_name = request.form.get('full_name')
+        role = request.form.get('role')
+
+        if User.query.filter_by(email=email).first():
+            flash('Email đã tồn tại!', 'danger')
+        else:
+            new_user = User(email=email, full_name=full_name, role=role)
+            new_user.set_password(password)
+            db.session.add(new_user)
             db.session.commit()
-            flash('Đã xóa buổi học.', 'info')
 
-        return redirect(url_for('admin.manage_class_schedule', class_id=class_id))
+            if role == 'student':
+                student_code = request.form.get('student_code')
+                class_name = request.form.get('class_name')
+                major = request.form.get('major')
+                cohort = request.form.get('cohort')
+                new_student = Student(user_id=new_user.id, student_code=student_code, class_name=class_name,
+                                      major=major, cohort=cohort)
+                db.session.add(new_student)
 
-    return render_template('admin/class_schedule.html', current_class=current_class)
+            elif role == 'teacher':
+                teacher_code = request.form.get('teacher_code')
+                department = request.form.get('department')
+                new_teacher = Teacher(user_id=new_user.id, teacher_code=teacher_code, department=department)
+                db.session.add(new_teacher)
+
+            db.session.commit()
+            flash('Tạo tài khoản thành công.', 'success')
+        return redirect(url_for('admin.create_user'))
+    return render_template('admin/create_user.html')

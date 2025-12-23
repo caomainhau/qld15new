@@ -102,32 +102,50 @@
         </div>
     </div>
 
-    <h5 class="mb-3 text-secondary"><i class="fas fa-rocket"></i> Chức năng thường dùng</h5>
+    <h5 class="mb-3 text-secondary"><i class="fas fa-rocket"></i> Truy cập & Tiện ích</h5>
     <div class="row g-3">
         <div class="col-md-4">
             <a href="{{ url_for('admin.manage_semesters') }}"
-               class="card p-3 text-decoration-none text-dark shadow-sm hover-card">
+               class="card p-3 text-decoration-none text-dark shadow-sm hover-card h-100">
                 <div class="d-flex align-items-center">
                     <div class="bg-info text-white rounded p-3 me-3">
                         <i class="fas fa-calendar-alt fa-lg"></i>
                     </div>
                     <div>
                         <h6 class="fw-bold mb-1">Quản lý Học kỳ</h6>
-                        <small class="text-muted">Mở/Đóng học kỳ, set Active</small>
+                        <small class="text-muted">Thiết lập học kỳ mới / Active</small>
                     </div>
                 </div>
             </a>
         </div>
 
         <div class="col-md-4">
-            <div class="card p-3 text-secondary bg-light shadow-sm">
+            <a href="{{ url_for('admin.active_users') }}"
+               class="card p-3 text-decoration-none text-dark shadow-sm hover-card h-100">
                 <div class="d-flex align-items-center">
-                    <div class="bg-secondary text-white rounded p-3 me-3">
-                        <i class="fas fa-users-cog fa-lg"></i>
+                    <div class="bg-success text-white rounded p-3 me-3 position-relative">
+                        <i class="fas fa-signal fa-lg"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
+                            <span class="visually-hidden">New alerts</span>
+                        </span>
                     </div>
                     <div>
-                        <h6 class="fw-bold mb-1">Tổng User hệ thống</h6>
-                        <small class="text-muted">{{ stats.total_users }} tài khoản đang hoạt động</small>
+                        <h6 class="fw-bold mb-1">Đang hoạt động</h6>
+                        <h5 class="text-success fw-bold mb-0">{{ stats.online_users }} <small class="text-muted fs-6 fw-normal">người dùng</small></h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card p-3 text-secondary bg-light shadow-sm h-100">
+                <div class="d-flex align-items-center">
+                    <div class="bg-secondary text-white rounded p-3 me-3">
+                        <i class="fas fa-database fa-lg"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-1">Tổng quan Database</h6>
+                        <small class="text-muted">{{ stats.total_users }} tài khoản đã đăng ký</small>
                     </div>
                 </div>
             </div>
@@ -136,18 +154,22 @@
 </div>
 
 <script>
-    // Script nhỏ để hiển thị ngày hiện tại
+    // Script hiển thị ngày
     const dateElement = document.getElementById('currentDate');
     const options = {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'};
     dateElement.textContent = new Date().toLocaleDateString('vi-VN', options);
 </script>
 
 <style>
-    /* Hiệu ứng hover nhẹ cho các card */
+    /* Hiệu ứng hover */
+    .hover-card {
+        transition: transform 0.3s ease, border-color 0.3s ease;
+        border: 1px solid transparent;
+    }
     .hover-card:hover {
         transform: translateY(-5px);
-        transition: transform 0.3s ease;
-        border-color: #0dcaf0; /* Màu info */
+        border-color: #0dcaf0;
+        cursor: pointer;
     }
 </style>
 {% endblock %}

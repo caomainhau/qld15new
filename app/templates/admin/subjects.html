@@ -1,41 +1,156 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="row">
-    <div class="col-md-4">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">Thêm Học phần</div>
-            <div class="card-body">
-                <form method="POST">
+    <div class="col-lg-5 mb-4">
+        <div class="card shadow border-0">
+            <div class="card-header bg-primary text-white fw-bold">
+                <i class="fas fa-plus-circle"></i> Thêm Học phần Mới
+            </div>
+            <div class="card-body bg-light">
+                <form method="POST" id="subjectForm">
+
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="fas fa-magic"></i> <strong>Mã học phần tự động:</strong><br>
+                        Hệ thống sẽ lấy chữ cái đầu + Năm hiện tại.<br>
+                        VD: <em>"Lập Trình Web" (2025)</em> &rarr; <strong>LTW25</strong>
+                    </div>
+
                     <div class="mb-3">
-                        <label>Mã Học phần</label>
-                        <input type="text" name="code" class="form-control" placeholder="VD: 20GIT101" required>
+                        <label class="form-label fw-bold small text-muted">Tên Học phần <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="VD: Trí tuệ nhân tạo" required>
                     </div>
                     <div class="mb-3">
-                        <label>Tên Học phần</label>
-                        <input type="text" name="name" class="form-control" required>
+                        <label class="form-label fw-bold small text-muted">Số tín chỉ <span class="text-danger">*</span></label>
+                        <input type="number" name="credits" class="form-control" value="3" min="1" max="10" required>
                     </div>
-                    <div class="mb-3">
-                        <label>Số tín chỉ</label>
-                        <input type="number" name="credits" class="form-control" min="1" max="10" required>
+
+                    <hr>
+
+                    <label class="form-label fw-bold small text-primary mb-2">
+                        <i class="fas fa-sliders-h"></i> Cấu hình cột điểm
+                    </label>
+
+                    <div id="grade-cols-container">
+                        <div class="row g-2 mb-2 grade-row align-items-center">
+                            <div class="col-6">
+                                <input type="text" name="col_names[]" class="form-control form-control-sm" value="Chuyên cần" placeholder="Tên cột" required>
+                            </div>
+                            <div class="col-4">
+                                <div class="input-group input-group-sm">
+                                    <input type="number" name="col_weights[]" class="form-control weight-input" value="10" min="0" max="100" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-2 text-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-row" disabled><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-2 grade-row align-items-center">
+                            <div class="col-6">
+                                <input type="text" name="col_names[]" class="form-control form-control-sm" value="Cuối kỳ" placeholder="Tên cột" required>
+                            </div>
+                            <div class="col-4">
+                                <div class="input-group input-group-sm">
+                                    <input type="number" name="col_weights[]" class="form-control weight-input" value="90" min="0" max="100" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-2 text-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-row"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-success w-100">Lưu</button>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="add-col-btn">
+                            <i class="fas fa-plus"></i> Thêm cột điểm
+                        </button>
+                        <span class="small fw-bold text-muted">
+                            Tổng: <span id="total-weight" class="text-success">100</span>%
+                        </span>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 fw-bold">
+                        <i class="fas fa-save"></i> Lưu Môn Học
+                    </button>
                 </form>
             </div>
         </div>
     </div>
-    <div class="col-md-8">
-        <div class="card shadow">
-            <div class="card-body">
-                <table class="table table-hover">
-                    <thead>
-                        <tr><th>Mã HP</th><th>Tên HP</th><th>Tín chỉ</th></tr>
+
+    <div class="col-lg-7">
+        <div class="card shadow border-0">
+            <div class="card-header bg-white py-3">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                    <h5 class="mb-0 fw-bold text-primary">
+                        {% if is_all %}
+                            <i class="fas fa-list"></i> Tất cả danh mục
+                        {% elif selected_semester %}
+                            <i class="fas fa-book-open"></i> Môn mở lớp: {{ selected_semester.name }}
+                        {% else %}
+                            Danh sách môn học
+                        {% endif %}
+                    </h5>
+
+                    <form method="GET" class="d-flex align-items-center">
+                        <select name="semester_id" class="form-select form-select-sm fw-bold border-primary text-primary"
+                                onchange="this.form.submit()" style="min-width: 200px;">
+                            <option value="all" {% if is_all %}selected{% endif %}>-- Xem tất cả danh mục --</option>
+                            {% for sem in semesters %}
+                                <option value="{{ sem.id }}"
+                                    {% if not is_all and selected_semester and selected_semester.id == sem.id %}selected{% endif %}>
+                                    {{ sem.name }} {% if sem.is_active %}(Hiện tại){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-secondary">
+                        <tr>
+                            <th class="ps-3">Mã HP</th>
+                            <th>Tên Học phần</th>
+                            <th class="text-center">Tín chỉ</th>
+                            <th>Cấu trúc điểm</th>
+                            <th class="text-end pe-3">#</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {% for sub in subjects %}
                         <tr>
-                            <td>{{ sub.code }}</td>
-                            <td>{{ sub.name }}</td>
-                            <td>{{ sub.credits }}</td>
+                            <td class="ps-3 fw-bold text-primary">{{ sub.code }}</td>
+                            <td class="fw-bold">{{ sub.name }}</td>
+                            <td class="text-center"><span class="badge bg-secondary">{{ sub.credits }}</span></td>
+                            <td>
+                                {% if sub.grade_weights %}
+                                    {% for gw in sub.grade_weights %}
+                                        <span class="badge bg-light text-dark border me-1" style="font-size: 0.75rem;">
+                                            {{ gw.name }}: {{ gw.weight_percent }}%
+                                        </span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted small fst-italic">Chưa cấu hình</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3">
+                                <button class="btn btn-sm btn-outline-secondary border-0"><i class="fas fa-edit"></i></button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fas fa-box-open fa-3x mb-3 text-secondary opacity-25"></i><br>
+                                {% if is_all %}
+                                    Chưa có môn học nào.
+                                {% else %}
+                                    Không có môn học nào mở lớp trong kỳ này.
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -44,4 +159,77 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('grade-cols-container');
+        const addBtn = document.getElementById('add-col-btn');
+        const totalSpan = document.getElementById('total-weight');
+        const form = document.getElementById('subjectForm');
+
+        function updateTotal() {
+            let total = 0;
+            document.querySelectorAll('.weight-input').forEach(input => {
+                total += parseInt(input.value) || 0;
+            });
+            totalSpan.innerText = total;
+
+            if (total !== 100) {
+                totalSpan.classList.remove('text-success');
+                totalSpan.classList.add('text-danger');
+            } else {
+                totalSpan.classList.remove('text-danger');
+                totalSpan.classList.add('text-success');
+            }
+        }
+
+        addBtn.addEventListener('click', function() {
+            const div = document.createElement('div');
+            div.className = 'row g-2 mb-2 grade-row align-items-center';
+            div.innerHTML = `
+                <div class="col-6">
+                    <input type="text" name="col_names[]" class="form-control form-control-sm" placeholder="Tên cột" required>
+                </div>
+                <div class="col-4">
+                    <div class="input-group input-group-sm">
+                        <input type="number" name="col_weights[]" class="form-control weight-input" value="0" min="0" max="100" required>
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+                <div class="col-2 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 remove-row"><i class="fas fa-times"></i></button>
+                </div>
+            `;
+            container.appendChild(div);
+            updateTotal();
+        });
+
+        container.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-row')) {
+                const row = e.target.closest('.grade-row');
+                if (document.querySelectorAll('.grade-row').length > 1) {
+                    row.remove();
+                    updateTotal();
+                }
+            }
+        });
+
+        container.addEventListener('input', function(e) {
+            if (e.target.classList.contains('weight-input')) {
+                updateTotal();
+            }
+        });
+
+        form.addEventListener('submit', function(e) {
+            let total = 0;
+            document.querySelectorAll('.weight-input').forEach(input => total += parseInt(input.value) || 0);
+            if (total !== 100) {
+                e.preventDefault();
+                alert('Tổng tỷ lệ phần trăm phải bằng 100%!');
+            }
+        });
+
+        updateTotal();
+    });
+</script>
 {% endblock %}

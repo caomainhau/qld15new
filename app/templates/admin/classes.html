@@ -17,8 +17,14 @@
                 <select name="semester_id" class="form-select">
                     <option value="">-- Tất cả Học kỳ --</option>
                     {% for sem in semesters %}
-                    <option value="{{ sem.id }}" {% if request.args.get('semester_id')|int == sem.id %}selected{% endif %}>
-                        {{ sem.name }} {% if not sem.is_active %}(Đã đóng){% endif %}
+                    <option value="{{ sem.id }}"
+                        {# Logic: Nếu URL có tham số HOẶC Backend tự chọn (current_filter_sem) #}
+                        {% if (request.args.get('semester_id') and request.args.get('semester_id')|int == sem.id)
+                              or (not request.args.get('semester_id') and current_filter_sem == sem.id) %}
+                            selected
+                        {% endif %}>
+
+                        {{ sem.name }} {% if sem.is_active %}(Hiện tại){% endif %}
                     </option>
                     {% endfor %}
                 </select>
@@ -76,7 +82,7 @@
                     <th>Giảng viên</th>
                     <th>Học kỳ</th>
                     <th>Sĩ số</th>
-                    <th>Trạng thái</th>
+                    <th>Cấu hình</th> <th>Trạng thái</th>
                 </tr>
             </thead>
             <tbody>
@@ -95,6 +101,12 @@
                     <td>{{ cls.semester.name }}</td>
                     <td>{{ cls.enrollments|length }}/{{ cls.max_students }}</td>
                     <td>
+                        <button class="btn btn-sm btn-outline-info"
+                                onclick="openScheduleModal('{{ cls.id }}', '{{ cls.name }}')">
+                            <i class="fas fa-calendar-alt"></i> Lịch dạy
+                        </button>
+                    </td>
+                    <td>
                         {% if cls.is_locked %}
                             <span class="badge bg-danger">Đã khóa</span>
                         {% else %}
@@ -104,7 +116,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" class="text-center py-4 text-muted">Không tìm thấy lớp học phần nào phù hợp.</td>
+                    <td colspan="8" class="text-center py-4 text-muted">Không tìm thấy lớp học phần nào phù hợp.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -154,10 +166,10 @@
                                 <span class="input-group-text bg-light"><i class="fas fa-signature"></i></span>
                                 <input type="text" class="form-control fw-bold text-primary"
                                        name="name" id="input-name"
-                                       placeholder="Vui lòng chọn Học kỳ và Môn học trước..." required>
+                                       placeholder="Chọn Học kỳ và Môn học để tạo tên..." required>
                             </div>
                             <div class="form-text text-muted">
-                                <i class="fas fa-info-circle"></i> Tên lớp tự động: [Tên Môn] - Nhóm [Số thứ tự].
+                                <i class="fas fa-magic"></i> Tên lớp tự động: [Tên Môn] - Nhóm [Số thứ tự].
                             </div>
                         </div>
 
@@ -190,7 +202,60 @@
     </div>
 </div>
 
+<div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-calendar-alt"></i> Cấu hình lịch: <span id="scheduleClassName" class="fw-bold text-dark"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <div class="card card-body bg-light mb-3 p-2 border-0">
+                    <h6 class="fw-bold text-primary mb-2 small text-uppercase">Thêm buổi học:</h6>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-3">
+                            <label class="small fw-bold">Thứ</label>
+                            <select id="sch-day" class="form-select form-select-sm">
+                                <option value="2">Hai</option>
+                                <option value="3">Ba</option>
+                                <option value="4">Tư</option>
+                                <option value="5">Năm</option>
+                                <option value="6">Sáu</option>
+                                <option value="7">Bảy</option>
+                                <option value="8">CN</option>
+                            </select>
+                        </div>
+                        <div class="col-3">
+                            <label class="small fw-bold">Tiết BĐ</label>
+                            <input type="number" id="sch-start" class="form-control form-control-sm" min="1" max="15" placeholder="1">
+                        </div>
+                        <div class="col-3">
+                            <label class="small fw-bold">Số tiết</label>
+                            <input type="number" id="sch-count" class="form-control form-control-sm" min="1" max="5" value="3">
+                        </div>
+                        <div class="col-3">
+                            <label class="small fw-bold">Phòng</label>
+                            <input type="text" id="sch-room" class="form-control form-control-sm" placeholder="A101">
+                        </div>
+                        <div class="col-12 text-end mt-2">
+                            <button onclick="addSchedule()" class="btn btn-sm btn-primary w-100"><i class="fas fa-plus"></i> Thêm Lịch</button>
+                        </div>
+                    </div>
+                    <div id="sch-error" class="text-danger small mt-2 fw-bold text-center"></div>
+                </div>
+
+                <h6 class="fw-bold border-bottom pb-2 mt-3">Lịch đã xếp:</h6>
+                <div id="scheduleList" class="list-group list-group-flush">
+                    <p class="text-center text-muted my-3">Đang tải...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+    // --- PHẦN 1: TỰ ĐỘNG TẠO TÊN LỚP (MODAL THÊM LỚP) ---
     document.addEventListener('DOMContentLoaded', function() {
         const semesterSelect = document.getElementById('select-semester');
         const subjectSelect = document.getElementById('select-subject');
@@ -199,34 +264,126 @@
         function updateClassName() {
             const semesterId = semesterSelect.value;
             const subjectId = subjectSelect.value;
-
-            // Lấy tên môn học từ attribute data-name
             const selectedOption = subjectSelect.options[subjectSelect.selectedIndex];
             const subjectName = selectedOption.getAttribute('data-name');
 
-            // Chỉ chạy khi đã chọn cả Semester và Subject
             if (semesterId && subjectId && subjectName) {
-                // Hiển thị trạng thái đang tải...
-                nameInput.placeholder = "Đang tạo tên lớp...";
-
-                // Gọi API backend
+                nameInput.placeholder = "Đang lấy dữ liệu...";
                 fetch(`/admin/api/get_next_group?semester_id=${semesterId}&subject_id=${subjectId}`)
                     .then(response => response.json())
                     .then(data => {
-                        // Cập nhật giá trị vào ô input
                         nameInput.value = `${subjectName} - Nhóm ${data.next_group}`;
                     })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        nameInput.placeholder = "Lỗi khi tạo tên tự động";
-                    });
+                    .catch(error => console.error('Error:', error));
             }
         }
-
-        // Lắng nghe sự kiện thay đổi
         semesterSelect.addEventListener('change', updateClassName);
         subjectSelect.addEventListener('change', updateClassName);
     });
+
+    // --- PHẦN 2: QUẢN LÝ LỊCH HỌC (AJAX) ---
+    let currentClassId = null;
+
+    // A. Mở Modal và load dữ liệu
+    function openScheduleModal(classId, className) {
+        currentClassId = classId;
+        document.getElementById('scheduleClassName').innerText = className;
+        document.getElementById('sch-error').innerText = '';
+        document.getElementById('sch-start').value = '';
+        document.getElementById('sch-room').value = '';
+
+        const modal = new bootstrap.Modal(document.getElementById('scheduleModal'));
+        modal.show();
+
+        loadSchedules(classId);
+    }
+
+    // B. Load danh sách từ Server
+    function loadSchedules(classId) {
+        const listContainer = document.getElementById('scheduleList');
+        listContainer.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div></div>';
+
+        fetch(`/admin/api/schedule/get/${classId}`)
+            .then(res => res.json())
+            .then(data => {
+                listContainer.innerHTML = '';
+                if (data.length === 0) {
+                    listContainer.innerHTML = '<div class="text-center text-muted fst-italic py-3">Chưa có lịch học nào.</div>';
+                    return;
+                }
+
+                data.forEach(sch => {
+                    let dayText = sch.day === 8 ? "Chủ Nhật" : "Thứ " + sch.day;
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item d-flex justify-content-between align-items-center px-0';
+                    item.innerHTML = `
+                        <div>
+                            <i class="far fa-clock text-muted me-2"></i>
+                            <span class="fw-bold text-dark">${dayText}</span>:
+                            Tiết <span class="badge bg-secondary">${sch.start} -> ${sch.end}</span>
+                            - Phòng <span class="fw-bold text-primary">${sch.room}</span>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger border-0" onclick="deleteSchedule(${sch.id})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    listContainer.appendChild(item);
+                });
+            });
+    }
+
+    // C. Thêm lịch mới
+    function addSchedule() {
+        const day = document.getElementById('sch-day').value;
+        const start = document.getElementById('sch-start').value;
+        const count = document.getElementById('sch-count').value;
+        const room = document.getElementById('sch-room').value;
+        const errorDiv = document.getElementById('sch-error');
+
+        if (!start || !room) {
+            errorDiv.innerText = 'Vui lòng nhập tiết bắt đầu và phòng học!';
+            return;
+        }
+
+        fetch('/admin/api/schedule/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                class_id: currentClassId,
+                day: day, start: start, count: count, room: room
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                errorDiv.innerText = '';
+                document.getElementById('sch-room').value = '';
+                loadSchedules(currentClassId);
+            } else {
+                errorDiv.innerText = data.msg;
+            }
+        })
+        .catch(err => {
+            errorDiv.innerText = "Lỗi kết nối server!";
+        });
+    }
+
+    // D. Xóa lịch
+    function deleteSchedule(schId) {
+        if(!confirm('Xác nhận xóa buổi học này?')) return;
+
+        fetch('/admin/api/schedule/delete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ schedule_id: schId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                loadSchedules(currentClassId);
+            }
+        });
+    }
 </script>
 
 {% endblock %}

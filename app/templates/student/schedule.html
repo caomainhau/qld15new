@@ -1,49 +1,114 @@
 {% extends "base.html" %}
+
 {% block content %}
-<h2 class="mb-4">Thời khóa biểu cá nhân</h2>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-primary fw-bold"><i class="fas fa-calendar-alt"></i> Thời khóa biểu cá nhân</h2>
 
-<div class="table-responsive">
-    <table class="table table-bordered text-center align-middle">
-        <thead class="table-dark">
-            <tr>
-                <th style="width: 10%">Tiết / Thứ</th>
-                <th style="width: 12%">Thứ 2</th>
-                <th style="width: 12%">Thứ 3</th>
-                <th style="width: 12%">Thứ 4</th>
-                <th style="width: 12%">Thứ 5</th>
-                <th style="width: 12%">Thứ 6</th>
-                <th style="width: 12%">Thứ 7</th>
-                <th style="width: 12%">Chủ Nhật</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for lesson in range(1, 11) %}
-            <tr>
-                <th class="table-secondary">Tiết {{ lesson }}</th>
-                
-                {# Vòng lặp các ngày trong tuần (2 -> 8) #}
-                {% for day in range(2, 9) %}
-                    {% set ns = namespace(found=false, info='') %}
-                    
-                    {# Kiểm tra xem tiết này, ngày này có môn nào không #}
-                    {% for enroll in enrollments %}
-                        {% for sch in enroll.class_info.schedules %}
-                            {% if sch.day_of_week == day and lesson >= sch.start_lesson and lesson <= sch.end_lesson %}
-                                {% set ns.found = true %}
-                                {% set ns.info = enroll.class_info.name + '<br>(' + sch.room + ')' %}
-                            {% endif %}
-                        {% endfor %}
-                    {% endfor %}
-
-                    <td class="{% if ns.found %}bg-info text-white{% endif %}">
-                        {% if ns.found %}
-                            <small>{{ ns.info|safe }}</small>
-                        {% endif %}
-                    </td>
+        <form method="GET" action="{{ url_for('student.schedule') }}" class="d-flex align-items-center bg-white p-2 rounded shadow-sm">
+            <label class="me-2 fw-bold text-muted mb-0"><i class="fas fa-filter"></i> Học kỳ:</label>
+            <select name="semester_id" class="form-select form-select-sm border-0 bg-light fw-bold text-primary"
+                    onchange="this.form.submit()" style="width: 250px; cursor: pointer;">
+                {% for sem in semesters %}
+                    <option value="{{ sem.id }}" {% if current_semester and current_semester.id == sem.id %}selected{% endif %}>
+                        {{ sem.name }} {% if sem.is_active %}(Hiện tại){% endif %}
+                    </option>
                 {% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </select>
+        </form>
+    </div>
+
+    {% if not current_semester %}
+        <div class="alert alert-warning text-center shadow-sm">
+            <i class="fas fa-exclamation-triangle"></i> Chưa có dữ liệu học kỳ nào trong hệ thống.
+        </div>
+    {% else %}
+        <div class="card shadow border-0">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-uppercase">Lịch học - {{ current_semester.name }}</h6>
+                <small><i class="fas fa-clock"></i> Cập nhật mới nhất</small>
+            </div>
+
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center align-middle mb-0">
+                        <thead class="bg-light text-secondary">
+                            <tr>
+                                <th style="width: 8%" class="text-uppercase small fw-bold">Tiết / Thứ</th>
+                                <th style="width: 13%">Thứ 2</th>
+                                <th style="width: 13%">Thứ 3</th>
+                                <th style="width: 13%">Thứ 4</th>
+                                <th style="width: 13%">Thứ 5</th>
+                                <th style="width: 13%">Thứ 6</th>
+                                <th style="width: 13%">Thứ 7</th>
+                                <th style="width: 14%" class="text-danger">Chủ Nhật</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for lesson in range(1, 13) %}
+
+                            <tr>
+                                <th class="table-light text-muted small py-3">Tiết {{ lesson }}</th>
+
+                                {% for day in range(2, 9) %}
+                                    {% set ns = namespace(found=false, info='', color='bg-white') %}
+
+                                    {% for enroll in enrollments %}
+                                        {% for sch in enroll.class_info.schedules %}
+
+                                            {# Điều kiện: Đúng thứ VÀ Tiết hiện tại nằm trong khoảng [start, end] #}
+                                            {% if sch.day_of_week == day and lesson >= sch.start_lesson and lesson <= sch.end_lesson %}
+                                                {% set ns.found = true %}
+
+                                                {# Nội dung hiển thị trong ô #}
+                                                {% set ns.info = enroll.class_info.name ~ '<br><span class="badge bg-warning text-dark mt-1"><i class="fas fa-map-marker-alt"></i> ' ~ sch.room ~ '</span>' %}
+
+                                                {# Màu nền cho ô có lịch #}
+                                                {% set ns.color = 'bg-primary bg-opacity-10 border-primary text-primary fw-bold' %}
+                                            {% endif %}
+
+                                        {% endfor %}
+                                    {% endfor %}
+
+                                    <td class="{{ ns.color }} p-1 transition-hover" style="font-size: 0.9rem; vertical-align: middle;">
+                                        {% if ns.found %}
+                                            {{ ns.info|safe }}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+
+                            {% if lesson == 5 %}
+                            <tr class="table-secondary border-top border-bottom border-dark">
+                                <td colspan="8" class="text-center py-1 small fw-bold text-muted">--- Hết buổi Sáng ---</td>
+                            </tr>
+                            {% elif lesson == 10 %}
+                            <tr class="table-secondary border-top border-bottom border-dark">
+                                <td colspan="8" class="text-center py-1 small fw-bold text-muted">--- Hết buổi Chiều ---</td>
+                            </tr>
+                            {% endif %}
+
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card-footer text-muted small bg-white">
+                <i class="fas fa-info-circle text-info"></i> <b>Lưu ý:</b> Lịch học trên chỉ hiển thị các lớp thuộc học kỳ đang chọn. Vui lòng kiểm tra kỹ phòng học trước khi đến lớp.
+            </div>
+        </div>
+    {% endif %}
 </div>
+
+<style>
+    .transition-hover {
+        transition: all 0.2s ease-in-out;
+    }
+    .bg-opacity-10:hover {
+        background-color: rgba(13, 110, 253, 0.2) !important; /* Đậm hơn chút khi hover */
+        cursor: pointer;
+    }
+</style>
 {% endblock %}

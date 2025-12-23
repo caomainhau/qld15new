@@ -5,14 +5,21 @@ import string
 import secrets
 from datetime import timedelta
 
+
+# ---------------------------------------------------------
+# 1. DECORATORS PHÂN QUYỀN
+# ---------------------------------------------------------
+
 # Decorator yêu cầu quyền Admin
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or current_user.role != 'admin':
-            abort(403) # Lỗi 403: Forbidden
+            abort(403)  # Lỗi 403: Forbidden
         return f(*args, **kwargs)
+
     return decorated_function
+
 
 # Decorator yêu cầu quyền Giảng viên
 def teacher_required(f):
@@ -21,7 +28,9 @@ def teacher_required(f):
         if not current_user.is_authenticated or current_user.role != 'teacher':
             abort(403)
         return f(*args, **kwargs)
+
     return decorated_function
+
 
 # Decorator yêu cầu quyền Sinh viên
 def student_required(f):
@@ -30,7 +39,13 @@ def student_required(f):
         if not current_user.is_authenticated or current_user.role != 'student':
             abort(403)
         return f(*args, **kwargs)
+
     return decorated_function
+
+
+# ---------------------------------------------------------
+# 2. HÀM HỖ TRỢ TIỆN ÍCH
+# ---------------------------------------------------------
 
 def generate_random_password(length=10):
     """Sinh mật khẩu ngẫu nhiên gồm chữ và số"""
@@ -38,8 +53,6 @@ def generate_random_password(length=10):
     password = ''.join(secrets.choice(alphabet) for i in range(length))
     return password
 
-
-# ... (các code cũ)
 
 def calculate_gpa_vku(score_10):
     """
@@ -97,27 +110,56 @@ def get_valid_class_dates(schedule, semester):
     return valid_dates
 
 
-def check_schedule_conflict(new_class_id, day, start, end, room, semester_id):
-    """
-    Kiểm tra trùng lịch: Cùng phòng, cùng thứ, giao nhau về tiết học
-    """
-    from .models import Schedule, Class
+# ---------------------------------------------------------
+# 3. HÀM KIỂM TRA TRÙNG LỊCH (QUAN TRỌNG)
+# ---------------------------------------------------------
 
-    # Lấy tất cả lịch trong học kỳ này
-    existing_schedules = Schedule.query.join(Class).filter(
+def check_schedule_conflict(class_id, day, start, end, room, semester_id):
+    """
+    Kiểm tra trùng lịch học.
+    Trả về: True nếu bị trùng, False nếu hợp lệ.
+    Logic:
+    1. Trùng PHÒNG (Room Conflict)
+    2. Trùng GIẢNG VIÊN (Teacher Conflict)
+    """
+    from .models import Schedule, Class  # Import trong hàm để tránh circular import
+
+    # --- BƯỚC 1: KIỂM TRA TRÙNG PHÒNG ---
+    # Tìm lịch khác có: Cùng học kỳ, Cùng thứ, Cùng phòng, và thời gian GIAO NHAU
+    conflict_room = Schedule.query.join(Class).filter(
         Class.semester_id == semester_id,
         Schedule.day_of_week == day,
         Schedule.room == room,
-        Schedule.is_canceled == False
-    ).all()
+        Schedule.is_canceled == False,
 
-    for sch in existing_schedules:
-        # Bỏ qua chính nó (trường hợp update)
-        if sch.class_id == new_class_id:
-            continue
+        # Công thức giao nhau: (StartA <= EndB) và (EndA >= StartB)
+        Schedule.start_lesson <= end,
+        Schedule.end_lesson >= start
+    ).first()
 
-        # Kiểm tra giao nhau: (StartA < EndB) and (EndA > StartB)
-        if (start <= sch.end_lesson) and (end >= sch.start_lesson):
-            return sch  # Trả về lịch bị trùng
+    if conflict_room:
+        return True  # Đã trùng phòng
 
-    return None
+    # --- BƯỚC 2: KIỂM TRA TRÙNG GIẢNG VIÊN ---
+    # Lấy thông tin lớp để biết GV là ai
+    current_class = Class.query.get(class_id)
+    if current_class:
+        teacher_id = current_class.teacher_id
+
+        # Tìm xem GV này có dạy lớp nào khác vào giờ này không
+        conflict_teacher = Schedule.query.join(Class).filter(
+            Class.semester_id == semester_id,
+            Class.teacher_id == teacher_id,  # Cùng GV
+            Schedule.day_of_week == day,  # Cùng thứ
+            Schedule.is_canceled == False,
+            # Schedule.class_id != class_id,    # (Tùy chọn) Bỏ qua chính lớp này nếu đang sửa
+
+            # Kiểm tra giao nhau
+            Schedule.start_lesson <= end,
+            Schedule.end_lesson >= start
+        ).first()
+
+        if conflict_teacher:
+            return True  # Đã trùng lịch giảng viên
+
+    return False

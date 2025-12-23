@@ -2,15 +2,24 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="fw-bold text-primary">Quản lý Sinh viên</h3>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStudentModal">
-        <i class="fas fa-plus"></i> Thêm Sinh viên
+    <div>
+        <h3 class="fw-bold text-primary mb-0">Quản lý Sinh viên</h3>
+        <small class="text-muted">Tổng số: {{ students|length }} sinh viên</small>
+    </div>
+    <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+        <i class="fas fa-user-plus"></i> Thêm Sinh viên
     </button>
 </div>
 
-<div class="card mb-4 bg-light border-0">
+<div class="card mb-4 border-0 shadow-sm bg-white">
     <div class="card-body">
         <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">Từ khóa</label>
+                <input type="text" name="search" class="form-control"
+                       placeholder="Tên, MSSV hoặc Email..." value="{{ request.args.get('search', '') }}">
+            </div>
+
             <div class="col-md-3">
                 <label class="form-label small fw-bold text-muted">Ngành học</label>
                 <select name="major" class="form-select">
@@ -35,55 +44,70 @@
                 </select>
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label small fw-bold text-muted">Lớp sinh hoạt</label>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted">Lớp SH</label>
                 <input type="text" name="class_name" class="form-control"
-                       placeholder="VD: 20GIT"
-                       value="{{ request.args.get('class_name', '') }}">
+                       placeholder="VD: 20GIT" value="{{ request.args.get('class_name', '') }}">
             </div>
 
-            <div class="col-md-4 d-flex align-items-end">
-                <div class="d-flex w-100 gap-2">
-                    <button type="submit" class="btn btn-primary flex-grow-1">
-                        <i class="fas fa-filter"></i> Lọc dữ liệu
-                    </button>
-                    <a href="{{ url_for('admin.manage_students') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-sync"></i> Reset
-                    </a>
-                </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-search"></i> Lọc
+                </button>
             </div>
         </form>
     </div>
 </div>
 
-<div class="card shadow">
-    <div class="card-body">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
+<div class="card shadow border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light text-secondary">
                 <tr>
-                    <th>Mã SV</th>
-                    <th>Họ và Tên</th>
-                    <th>Email</th>
-                    <th>Lớp</th>
-                    <th>Ngành</th>
-                    <th>Khóa</th>
+                    <th class="ps-4">Sinh viên</th>
+                    <th>Thông tin lớp</th>
+                    <th>Ngành học</th>
+                    <th>Trạng thái</th>
+                    <th class="text-end pe-4">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 {% for student in students %}
                 <tr>
-                    <td class="fw-bold text-primary">{{ student.student_code }}</td>
+                    <td class="ps-4">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle bg-primary text-white me-3 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; font-weight: bold;">
+                                {{ student.user.full_name[0] | upper }}
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">{{ student.user.full_name }}</div>
+                                <div class="small text-muted">{{ student.student_code }} | {{ student.user.email }}</div>
+                            </div>
+                        </div>
+                    </td>
 
-                    <td class="fw-bold">{{ student.user.full_name }}</td>
-                    <td>{{ student.user.email }}</td>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <span class="fw-bold text-primary">{{ student.class_name }}</span>
+                            <span class="small text-muted">Khóa: {{ student.cohort }}</span>
+                        </div>
+                    </td>
 
-                    <td><span class="badge bg-secondary">{{ student.class_name }}</span></td>
-                    <td>{{ student.major }}</td>
-                    <td>{{ student.cohort }}</td>
+                    <td>
+                        <span class="d-inline-block text-truncate" style="max-width: 200px;" title="{{ student.major }}">
+                            {{ student.major }}
+                        </span>
+                    </td>
+
+                    <td><span class="badge bg-success bg-opacity-75">Đang học</span></td>
+
+                    <td class="text-end pe-4">
+                        <button class="btn btn-sm btn-outline-secondary border-0"><i class="fas fa-edit"></i></button>
+                    </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="text-center py-4 text-muted">
+                    <td colspan="5" class="text-center py-5 text-muted">
                         Không tìm thấy sinh viên nào phù hợp.
                     </td>
                 </tr>
@@ -94,21 +118,83 @@
 </div>
 
 <div class="modal fade" id="addStudentModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Thêm Sinh viên mới</h5>
+                <h5 class="modal-title fw-bold"><i class="fas fa-user-plus"></i> Thêm Sinh viên mới</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body text-center">
-                <p>Để thêm sinh viên, vui lòng sử dụng chức năng <strong>Tạo Tài Khoản</strong> chung.</p>
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('admin.create_user') }}" class="btn btn-success">
-                        <i class="fas fa-user-plus"></i> Đi tới trang Tạo Tài Khoản
-                    </a>
+
+            <form method="POST" action="{{ url_for('admin.manage_students') }}">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="alert alert-warning py-2 small">
+                                <i class="fas fa-magic"></i> <strong>Tự động hóa:</strong>
+                                <ul class="mb-0 ps-3">
+                                    <li>Mã SV: Tự động tăng (VD: GIT001, GIT002...)</li>
+                                    <li>Email: Tự sinh theo tên + mã SV (VD: <em>annv.git001@vku.udn.vn</em>)</li>
+                                    <li>Mật khẩu mặc định: <strong>123456</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Họ và Tên <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="full_name" required placeholder="Ví dụ: Nguyễn Văn An">
+                        </div>
+
+                        <hr class="my-4 text-muted">
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Ngành học <span class="text-danger">*</span></label>
+                            <select class="form-select" name="major_code" id="select-major" required onchange="updateClassName()">
+                                <option value="" selected disabled>-- Chọn ngành --</option>
+                                {% for m in majors_list %}
+                                    <option value="{{ m.code }}">{{ m.name }} ({{ m.code }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Khóa <span class="text-danger">*</span></label>
+                            <select class="form-select" name="cohort" id="select-cohort" required onchange="updateClassName()">
+                                <option value="" selected disabled>-- Khóa --</option>
+                                {% for c in cohorts_list %}
+                                    <option value="{{ c }}">{{ c }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Lớp Sinh hoạt</label>
+                            <input type="text" class="form-control" name="class_name" id="input-class" required placeholder="VD: 24GIT">
+                        </div>
+                    </div>
                 </div>
-            </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary px-4"><i class="fas fa-save"></i> Lưu hồ sơ</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<script>
+    function updateClassName() {
+        const majorSelect = document.getElementById('select-major');
+        const cohortSelect = document.getElementById('select-cohort');
+        const classInput = document.getElementById('input-class');
+
+        const majorCode = majorSelect.value;
+        const cohort = cohortSelect.value;
+
+        if (majorCode && cohort) {
+            const year = cohort.replace('K', '');
+            classInput.value = year + majorCode;
+        }
+    }
+</script>
+
 {% endblock %}

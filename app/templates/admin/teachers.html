@@ -2,21 +2,32 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="text-primary fw-bold">Quản lý Giảng viên</h3>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTeacherModal">
+    <div>
+        <h3 class="fw-bold text-primary mb-0">Quản lý Giảng viên</h3>
+        <small class="text-muted">Tổng số: {{ teachers|length }} giảng viên</small>
+    </div>
+    <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#addTeacherModal">
         <i class="fas fa-plus"></i> Thêm Giảng viên
     </button>
 </div>
 
-<div class="card mb-4 bg-light border-0">
-    <div class="card-body py-3">
-        <form method="GET" class="row align-items-center">
-            <div class="col-auto">
-                <label class="fw-bold text-secondary small">Lọc theo Khoa:</label>
+<div class="card mb-4 bg-white border-0 shadow-sm">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small fw-bold text-muted">Tìm kiếm</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0 ps-0"
+                           placeholder="Nhập tên, mã GV hoặc email..."
+                           value="{{ request.args.get('search', '') }}">
+                </div>
             </div>
+
             <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted">Lọc theo Khoa</label>
                 <select name="department" class="form-select" onchange="this.form.submit()">
-                    <option value="">-- Tất cả --</option>
+                    <option value="">-- Tất cả các khoa --</option>
                     {% for dept in departments %}
                         <option value="{{ dept[0] }}" {% if request.args.get('department') == dept[0] %}selected{% endif %}>
                             {{ dept[0] }}
@@ -24,32 +35,67 @@
                     {% endfor %}
                 </select>
             </div>
+
+            <div class="col-md-3">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100">Lọc</button>
+                    <a href="{{ url_for('admin.manage_teachers') }}" class="btn btn-outline-secondary"><i class="fas fa-sync"></i></a>
+                </div>
+            </div>
         </form>
     </div>
 </div>
 
-<div class="card shadow">
-    <div class="card-body">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
+<div class="card shadow border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light text-secondary">
                 <tr>
+                    <th class="ps-4">Giảng viên</th>
                     <th>Mã GV</th>
-                    <th>Họ tên</th>
-                    <th>Email</th>
-                    <th>Khoa / Bộ môn</th>
+                    <th>Đơn vị công tác (Khoa)</th>
+                    <th class="text-end pe-4">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 {% for teacher in teachers %}
                 <tr>
-                    <td class="fw-bold text-primary">{{ teacher.teacher_code }}</td>
-                    <td class="fw-bold">{{ teacher.user.full_name }}</td>
-                    <td>{{ teacher.user.email }}</td>
-                    <td><span class="badge bg-info text-dark">{{ teacher.department }}</span></td>
+                    <td class="ps-4">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-success bg-opacity-75 text-white rounded-circle d-flex justify-content-center align-items-center me-3 fw-bold shadow-sm"
+                                 style="width: 40px; height: 40px;">
+                                {{ teacher.user.full_name[0] | upper }}
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">{{ teacher.user.full_name }}</div>
+                                <div class="small text-muted">{{ teacher.user.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td><span class="badge bg-light text-dark border fw-normal">{{ teacher.teacher_code }}</span></td>
+
+                    <td>
+                        <span class="badge bg-info bg-opacity-10 text-primary border border-info border-opacity-25 px-3 py-2 rounded-pill">
+                            {{ teacher.department }}
+                        </span>
+                    </td>
+
+                    <td class="text-end pe-4">
+                        <button class="btn btn-sm btn-outline-secondary border-0" title="Chỉnh sửa">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger border-0" title="Xóa">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="4" class="text-center py-4 text-muted">Không có dữ liệu.</td>
+                    <td colspan="4" class="text-center py-5 text-muted">
+                        <i class="fas fa-chalkboard-teacher fa-3x mb-3 text-secondary opacity-25"></i><br>
+                        Không tìm thấy giảng viên nào.
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -60,41 +106,42 @@
 <div class="modal fade" id="addTeacherModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="fas fa-chalkboard-teacher"></i> Thêm Giảng viên Mới</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-user-plus"></i> Thêm Giảng viên</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form method="POST" action="{{ url_for('admin.manage_teachers') }}">
                 <div class="modal-body">
+
+                    <div class="alert alert-warning py-2 small mb-4">
+                        <i class="fas fa-robot"></i> <strong>Hệ thống tự động:</strong>
+                        <ul class="mb-0 ps-3">
+                            <li>Mã GV: Tự tăng (VD: GV001, GV002...).</li>
+                            <li>Email & Mật khẩu: Tự sinh ngẫu nhiên.</li>
+                            <li>Admin sẽ thấy mật khẩu sau khi lưu.</li>
+                        </ul>
+                    </div>
+
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Họ tên</label>
-                        <input type="text" name="full_name" class="form-control" required placeholder="VD: Nguyễn Văn A">
+                        <label class="form-label fw-bold">Họ và Tên <span class="text-danger">*</span></label>
+                        <input type="text" name="full_name" class="form-control" required placeholder="VD: Trần Thị B">
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Email (VKU)</label>
-                        <input type="email" name="email" class="form-control" placeholder="example@vku.udn.vn" required>
+                        <label class="form-label fw-bold">Khoa / Bộ môn <span class="text-danger">*</span></label>
+                        <select name="department" class="form-select" required>
+                            <option value="" selected disabled>-- Chọn Khoa --</option>
+                            {% for d in dept_list %}
+                                <option value="{{ d }}">{{ d }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Mã Giảng viên</label>
-                            <input type="text" name="teacher_code" class="form-control" required placeholder="GV001">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Khoa</label>
-                            <input type="text" name="department" class="form-control" placeholder="CNTT" required>
-                            <div class="form-text small">
-                                Các khoa hiện có:
-                                {% for d in departments %}{{ d[0] }}{% if not loop.last %}, {% endif %}{% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="alert alert-warning small">
-                        <i class="fas fa-key"></i> Mật khẩu mặc định sẽ là <strong>123456</strong>
-                    </div>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-primary">Lưu Giảng viên</button>
+                    <button type="submit" class="btn btn-primary px-4"><i class="fas fa-save"></i> Lưu hồ sơ</button>
                 </div>
             </form>
         </div>
